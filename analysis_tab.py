@@ -53,7 +53,7 @@ def _tide_block(df):
     )
     fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
     fig.update_layout(yaxis_title="キャッチ率（%）", xaxis_title="潮回り", uniformtext_minsize=8, uniformtext_mode="hide")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={"staticPlot": True})
 
     with st.expander("詳細（件数内訳）"):
         st.dataframe(g[["tide_type", "trips", "catches", "catch_rate"]].rename(
@@ -82,14 +82,14 @@ def _month_block(df):
             labels={"month": "月", "trips": "釣行回数"},
             title="月別 釣行回数"
         )
-        st.plotly_chart(fig1, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
     with c2:
         fig2 = px.line(
             g, x="month", y="catch_rate", markers=True,
             labels={"month": "月", "catch_rate": "キャッチ率（%）"},
             title="月別 キャッチ率"
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
 
     with st.expander("詳細（件数・平均サイズ）"):
         st.dataframe(
@@ -126,7 +126,7 @@ def _lure_block(df):
         title="ルアー別の釣果数"
     )
     fig1.update_traces(texttemplate="%{text}", textposition="outside")
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, use_container_width=True, config={"staticPlot": True})
 
     # --- グラフ2：ルアー別の平均サイズ ---
     fig2 = px.bar(
@@ -140,7 +140,7 @@ def _lure_block(df):
         color_continuous_scale="Viridis"
     )
     fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
 
     # --- テーブル表示 ---
     st.dataframe(
@@ -180,9 +180,7 @@ def _area_tide_block(df):
     fig.update_traces(marker=dict(opacity=0.6))
     fig.update_layout(showlegend=False, yaxis_title="潮位 (cm)", xaxis_title="エリア")
 
-    st.plotly_chart(fig, use_container_width=True)
-
-
+    st.plotly_chart(fig, use_container_width=True, config={"staticPlot": True})
 
 def show_analysis():
     st.header("📈 分析")
