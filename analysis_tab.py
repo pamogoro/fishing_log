@@ -51,6 +51,11 @@ def _tide_block(df):
         labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
         title="潮回り別キャッチ率"
     )
+
+    # 最大値に余裕をもたせる
+    y_max = df["売上"].max() * 1.15  # 15%くらい余裕を上に
+    fig.update_yaxes(range=[0, y_max])
+
     fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
     fig.update_layout(yaxis_title="キャッチ率（%）", 
                     xaxis_title="潮回り", 
@@ -222,6 +227,10 @@ def _area_tide_block(df):
         labels={"area": "エリア", "tide_height": "潮位 (cm)"},
         title="エリア別 潮位分布と釣果"
     )
+
+    # 最大値に余裕をもたせる
+    y_max = df["売上"].max() * 1.15  # 15%くらい余裕を上に
+    fig.update_yaxes(range=[0, y_max])
 
     fig.update_traces(marker=dict(opacity=0.6))
     fig.update_layout(showlegend=False, 
