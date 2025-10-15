@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from db_utils import fetch_all
+from streamlit_plotly_events import plotly_events
 
 def _prep_df():
     df = fetch_all()
