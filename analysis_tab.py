@@ -53,7 +53,7 @@ def _tide_block(df):
     )
 
     # 最大値に余裕をもたせる
-    y_max = df["catch_rate"].max() * 1.15  # 15%くらい余裕を上に
+    y_max = df["キャッチ率"].max() * 1.15  # 15%くらい余裕を上に
     fig.update_yaxes(range=[0, y_max])
 
     fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
@@ -229,7 +229,7 @@ def _area_tide_block(df):
     )
 
     # 最大値に余裕をもたせる
-    y_max = df["tide_height"].max() * 1.15  # 15%くらい余裕を上に
+    y_max = df["潮位"].max() * 1.15  # 15%くらい余裕を上に
     fig.update_yaxes(range=[0, y_max])
 
     fig.update_traces(marker=dict(opacity=0.6))
