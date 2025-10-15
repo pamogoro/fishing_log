@@ -55,9 +55,10 @@ def _tide_block(df):
     fig.update_layout(yaxis_title="キャッチ率（%）", xaxis_title="潮回り", uniformtext_minsize=8, uniformtext_mode="hide")
     st.plotly_chart(fig, use_container_width=True, config={"staticPlot": True})
 
-    st.dataframe(g[["tide_type", "trips", "catches", "catch_rate"]].rename(
-        columns={"tide_type": "潮回り", "trips": "釣行数", "catches": "ヒット回数", "catch_rate": "キャッチ率（%）"}
-    ))
+    with st.expander("詳細（件数内訳）"):
+        st.dataframe(g[["tide_type", "trips", "catches", "catch_rate"]].rename(
+            columns={"tide_type": "潮回り", "trips": "釣行数", "catches": "ヒット回数", "catch_rate": "キャッチ率（%）"}
+        ))
 
 def _month_block(df):
     st.subheader("📆 月別の傾向（釣行回数・キャッチ率）")
