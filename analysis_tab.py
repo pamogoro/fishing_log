@@ -82,7 +82,7 @@ def _month_block(df):
             labels={"month": "月", "trips": "釣行回数"},
             title="月別 釣行回数"
         )
-        st.plotly_chart(fig2, use_container_width=True, config={"staticPlot": True})
+        st.plotly_chart(fig1, use_container_width=True, config={"staticPlot": True})
     with c2:
         fig2 = px.line(
             g, x="month", y="catch_rate", markers=True,
