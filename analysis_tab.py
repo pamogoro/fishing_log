@@ -65,7 +65,6 @@ def _tide_block(df):
         config={
             "scrollZoom": False,   # スクロールでズームしない
             "displayModeBar": False,  # 右上のツールバー非表示
-            "staticPlot": False,   # 完全固定ではない
         }
     )
 
@@ -103,7 +102,6 @@ def _month_block(df):
             config={
                 "scrollZoom": False,   # スクロールでズームしない
                 "displayModeBar": False,  # 右上のツールバー非表示
-                "staticPlot": False,   # 完全固定ではない
             }
         )
 
@@ -119,7 +117,6 @@ def _month_block(df):
             config={
                 "scrollZoom": False,   # スクロールでズームしない
                 "displayModeBar": False,  # 右上のツールバー非表示
-                "staticPlot": False,   # 完全固定ではない
             }
         )
 
@@ -165,7 +162,6 @@ def _lure_block(df):
         config={
             "scrollZoom": False,   # スクロールでズームしない
             "displayModeBar": False,  # 右上のツールバー非表示
-            "staticPlot": False,   # 完全固定ではない
         }
     )
 
@@ -188,7 +184,6 @@ def _lure_block(df):
         config={
             "scrollZoom": False,   # スクロールでズームしない
             "displayModeBar": False,  # 右上のツールバー非表示
-            "staticPlot": False,   # 完全固定ではない
         }
     )
 
@@ -242,7 +237,6 @@ def _area_tide_block(df):
         config={
             "scrollZoom": False,   # スクロールでズームしない
             "displayModeBar": False,  # 右上のツールバー非表示
-            "staticPlot": False,   # 完全固定ではない
         }
     )
 
