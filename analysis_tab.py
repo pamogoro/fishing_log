@@ -86,11 +86,32 @@ def _tide_block(df):
     g["order_key"] = g["tide_type"].apply(lambda x: order.index(x) if x in order else len(order))
     g = g.sort_values(["order_key"])
 
-    fig = px.bar(df, x="潮回り", y="釣果率", text="釣果率",
-             labels={"潮回り":"潮回り","釣果率":"釣果率(%)"},
-             title="潮回り別釣果率")
+    # fig = px.bar(
+    #     g, x="tide_type", y="catch_rate",
+    #     text="catch_rate",
+    #     labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
+    #     title="潮回り別キャッチ率"
+    # )
+
+    # # 最大値に余裕をもたせる
+    # y_max = g["catch_rate"].max() * 1.15  # 15%くらい余裕を上に
+    # fig.update_yaxes(range=[0, y_max])
+
+    # fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
+    # fig.update_layout(yaxis_title="キャッチ率（%）", 
+    #                 xaxis_title="潮回り", 
+    #                 uniformtext_minsize=8, 
+    #                 uniformtext_mode="hide",
+    #                 margin=dict(t=80, b=40, l=40, r=40),
+    #                 yaxis=dict(automargin=True)
+    #                 )
+    # render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
+
+    fig = px.bar(g, x="tide_type", y="catch_rate", text="catch_rate",
+             labels={"tide_type":"潮回り","catch_rate":"釣果率(%)"},
+             title="潮回り別キャッチ率")
     fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
-    fig.update_yaxes(range=pad_range_y(df["釣果率"], pad_ratio=0.15))
+    fig.update_yaxes(range=pad_range_y(g["catch_rate"], pad_ratio=0.15))
     fig.update_xaxes(fixedrange=True)
     fig.update_yaxes(fixedrange=True)
     render_plotly_clickable(fig, key="tide_rate")
