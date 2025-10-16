@@ -108,7 +108,8 @@ def _tide_block(df):
     # render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
 
     fig = px.bar(
-        g, x="tide_type", y="catch_rate", text="catch_rate",
+        g, x="tide_type", y="catch_rate", 
+        text="catch_rate",
         labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
         title="潮回り別キャッチ率"
     )
