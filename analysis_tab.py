@@ -5,15 +5,15 @@ import streamlit as st
 from db_utils import fetch_all
 from streamlit_plotly_events import plotly_events
 
-# どのブロックでも共通で使うヘルパー
-def pad_range_y(series, *, pad_ratio=0.15, tozero=True):
-    """指定列の最大値に余白を加えた y 範囲を返す"""
+# 余白ヘルパ：デフォルトを20%に（必要なら呼び出し側で上書き）
+def pad_range_y(series, *, pad_ratio=0.20, tozero=True):
     ymin = float(series.min())
     ymax = float(series.max())
     if tozero:
         ymin = 0.0
     pad = (ymax - ymin) * pad_ratio if ymax > ymin else max(1.0, ymax) * pad_ratio
     return [ymin, ymax + pad]
+
 
 
 def render_plotly_clickable(fig, *, key: str, caption: str | None = None):
@@ -107,13 +107,24 @@ def _tide_block(df):
     #                 )
     # render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
 
-    fig = px.bar(g, x="tide_type", y="catch_rate", text="catch_rate",
-             labels={"tide_type":"潮回り","catch_rate":"釣果率(%)"},
-             title="潮回り別キャッチ率")
-    fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
-    fig.update_yaxes(range=pad_range_y(g["catch_rate"], pad_ratio=0.95))
-    fig.update_xaxes(fixedrange=True)
-    fig.update_yaxes(fixedrange=True)
+    fig = px.bar(
+        g, x="tide_type", y="catch_rate", text="catch_rate",
+        labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
+        title="潮回り別キャッチ率"
+    )
+    # 値表示は % 付き、outside のまま
+    fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
+    # 余白は20%くらい
+    fig.update_yaxes(range=pad_range_y(g["catch_rate"], pad_ratio=0.20))
+
+    # ← ここがポイント：テーマ/背景を明示（events 経由だと自動テーマが乗らない）
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+
+    # 固定レンジは render_plotly_clickable 内でやってるのでここでは不要
     render_plotly_clickable(fig, key="tide_rate")
 
 
