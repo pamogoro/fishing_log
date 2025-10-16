@@ -5,6 +5,35 @@ import streamlit as st
 from db_utils import fetch_all
 from streamlit_plotly_events import plotly_events
 
+def render_plotly_clickable(fig, *, key: str, caption: str | None = None):
+    # ここでズーム/パンを完全に無効化（PCドラッグ/スマホピンチ含む）
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    fig.update_layout(dragmode=False)  # ドラッグで何も起こらないように
+
+    # グラフ描画＋クリックイベントだけ拾う（ホバーや範囲選択は拾わない）
+    # ※ use_container_width はこのコンポーネントでは自前指定しない仕様
+    events = plotly_events(
+        fig,
+        click_event=True,
+        hover_event=False,
+        select_event=False,
+        key=key,  # 同ページ内で一意に
+    )
+
+    # クリックされた点の値を表示（x, y と追加メタを軽く）
+    if events:
+        pt = events[0]
+        x, y = pt.get("x"), pt.get("y")
+        extra = {k: v for k, v in pt.items() if k not in ("x", "y", "curveNumber", "pointNumber")}
+        with st.container():
+            st.info(f"選択: x={x}, y={y}  " + (f" / {extra}" if extra else ""))
+
+    if caption:
+        st.caption(caption)
+
+    return events
+
 def _prep_df():
     df = fetch_all()
     if df.empty:
@@ -65,14 +94,7 @@ def _tide_block(df):
                     margin=dict(t=80, b=40, l=40, r=40),
                     yaxis=dict(automargin=True)
                     )
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
 
 
     with st.expander("詳細（件数内訳）"):
@@ -102,14 +124,7 @@ def _month_block(df):
             labels={"month": "月", "trips": "釣行回数"},
             title="月別 釣行回数"
         )
-        st.plotly_chart(
-            fig1,
-            use_container_width=True,
-            config={
-                "scrollZoom": False,   # スクロールでズームしない
-                "displayModeBar": False,  # 右上のツールバー非表示
-            }
-        )
+        render_plotly_clickable(fig1, key="month_trips")
 
     with c2:
         fig2 = px.line(
@@ -117,14 +132,7 @@ def _month_block(df):
             labels={"month": "月", "catch_rate": "キャッチ率（%）"},
             title="月別 キャッチ率"
         )
-        st.plotly_chart(
-            fig2,
-            use_container_width=True,
-            config={
-                "scrollZoom": False,   # スクロールでズームしない
-                "displayModeBar": False,  # 右上のツールバー非表示
-            }
-        )
+        render_plotly_clickable(fig2, key="month_rate")
 
 
     with st.expander("詳細（件数・平均サイズ）"):
@@ -162,14 +170,7 @@ def _lure_block(df):
         title="ルアー別の釣果数"
     )
     fig1.update_traces(texttemplate="%{text}", textposition="outside")
-    st.plotly_chart(
-        fig1,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    render_plotly_clickable(fig1, key="lure_counts")
 
 
     # --- グラフ2：ルアー別の平均サイズ ---
@@ -184,14 +185,7 @@ def _lure_block(df):
         color_continuous_scale="Viridis"
     )
     fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    st.plotly_chart(
-        fig2,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    render_plotly_clickable(fig2, key="lure_avgsize")
 
 
     # --- テーブル表示 ---
@@ -241,14 +235,7 @@ def _area_tide_block(df):
                     yaxis=dict(automargin=True)
                     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    render_plotly_clickable(fig, key="area_tide")
 
 
 def show_analysis():
