@@ -162,30 +162,33 @@ def _lure_block(df):
 
     # --- グラフ1：使用ルアー別の釣果回数 ---
     fig1 = px.bar(
-        g,
-        x="lure",
-        y="catches",
-        text="catches",
+        g, x="lure", y="catches", text="catches",
         labels={"lure": "ルアー", "catches": "釣果数"},
         title="ルアー別の釣果数"
     )
-    fig1.update_traces(texttemplate="%{text}", textposition="outside")
+    # 余白 + 軸外描画OK + 上マージン
+    ymax1 = float(g["catches"].max()) * 1.15
+    fig1.update_yaxes(range=[0, ymax1])
+    fig1.update_traces(texttemplate="%{text}", textposition="outside", cliponaxis=False)
+    fig1.update_layout(margin=dict(t=80), yaxis=dict(automargin=True))
+
     render_plotly_clickable(fig1, key="lure_counts")
 
 
     # --- グラフ2：ルアー別の平均サイズ ---
     fig2 = px.bar(
-        g,
-        x="lure",
-        y="avg_size",
-        text="avg_size",
+        g, x="lure", y="avg_size", text="avg_size",
         labels={"lure": "ルアー", "avg_size": "平均サイズ (cm)"},
         title="ルアー別の平均サイズ",
-        color="avg_size",
-        color_continuous_scale="Viridis"
+        color="avg_size", color_continuous_scale="Viridis"
     )
-    fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+    ymax2 = float(g["avg_size"].max()) * 1.15
+    fig2.update_yaxes(range=[0, ymax2])
+    fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside", cliponaxis=False)
+    fig2.update_layout(margin=dict(t=80), yaxis=dict(automargin=True))
+
     render_plotly_clickable(fig2, key="lure_avgsize")
+
 
 
     # --- テーブル表示 ---
@@ -224,7 +227,7 @@ def _area_tide_block(df):
     )
 
     # # 最大値に余裕をもたせる
-    y_max = df_catch.max() * 1.15  # 15%くらい余裕を上に
+    y_max = df_catch["tide_height"].max() * 1.15  # 15%くらい余裕を上に
     fig.update_yaxes(range=[0, y_max])
     fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
 
