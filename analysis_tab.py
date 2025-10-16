@@ -111,7 +111,7 @@ def _tide_block(df):
              labels={"tide_type":"潮回り","catch_rate":"釣果率(%)"},
              title="潮回り別キャッチ率")
     fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
-    fig.update_yaxes(range=pad_range_y(g["catch_rate"], pad_ratio=0.15))
+    fig.update_yaxes(range=pad_range_y(g["catch_rate"], pad_ratio=0.95))
     fig.update_xaxes(fixedrange=True)
     fig.update_yaxes(fixedrange=True)
     render_plotly_clickable(fig, key="tide_rate")
