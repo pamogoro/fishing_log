@@ -5,6 +5,17 @@ import streamlit as st
 from db_utils import fetch_all
 from streamlit_plotly_events import plotly_events
 
+# どのブロックでも共通で使うヘルパー
+def pad_range_y(series, *, pad_ratio=0.15, tozero=True):
+    """指定列の最大値に余白を加えた y 範囲を返す"""
+    ymin = float(series.min())
+    ymax = float(series.max())
+    if tozero:
+        ymin = 0.0
+    pad = (ymax - ymin) * pad_ratio if ymax > ymin else max(1.0, ymax) * pad_ratio
+    return [ymin, ymax + pad]
+
+
 def render_plotly_clickable(fig, *, key: str, caption: str | None = None):
     # ここでズーム/パンを完全に無効化（PCドラッグ/スマホピンチ含む）
     fig.update_xaxes(fixedrange=True)
@@ -75,26 +86,15 @@ def _tide_block(df):
     g["order_key"] = g["tide_type"].apply(lambda x: order.index(x) if x in order else len(order))
     g = g.sort_values(["order_key"])
 
-    fig = px.bar(
-        g, x="tide_type", y="catch_rate",
-        text="catch_rate",
-        labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
-        title="潮回り別キャッチ率"
-    )
+    fig = px.bar(df, x="潮回り", y="釣果率", text="釣果率",
+             labels={"潮回り":"潮回り","釣果率":"釣果率(%)"},
+             title="潮回り別釣果率")
+    fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
+    fig.update_yaxes(range=pad_range_y(df["釣果率"], pad_ratio=0.15))
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    render_plotly_clickable(fig, key="tide_rate")
 
-    # 最大値に余裕をもたせる
-    y_max = g["catch_rate"].max() * 1.15  # 15%くらい余裕を上に
-    fig.update_yaxes(range=[0, y_max])
-
-    fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
-    fig.update_layout(yaxis_title="キャッチ率（%）", 
-                    xaxis_title="潮回り", 
-                    uniformtext_minsize=8, 
-                    uniformtext_mode="hide",
-                    margin=dict(t=80, b=40, l=40, r=40),
-                    yaxis=dict(automargin=True)
-                    )
-    render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
 
 
     with st.expander("詳細（件数内訳）"):
