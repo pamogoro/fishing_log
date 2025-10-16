@@ -82,6 +82,7 @@ def _tide_block(df):
     ).reset_index()
     g["catch_rate"] = (g["catches"] / g["trips"] * 100).round(1)
     g["catch_rate"] = pd.to_numeric(g["catch_rate"], errors="coerce")
+    g["catch_rate_label"] = g["catch_rate"].map(lambda v: f"{v:.1f}%")
     # 表示順（よく使う順）に並べ替え
     order = ["大潮", "中潮", "小潮", "若潮", "長潮", "不明"]
     g["order_key"] = g["tide_type"].apply(lambda x: order.index(x) if x in order else len(order))
@@ -109,13 +110,17 @@ def _tide_block(df):
     # render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
 
     fig = px.bar(
-        g, x="tide_type", y="catch_rate", 
-        text="catch_rate",
+        g, x="tide_type", y="catch_rate",
+        text="catch_rate_label",  # ← これを出す
         labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
         title="潮回り別キャッチ率"
     )
+    fig.update_traces(textposition="outside")           # outside でOK
+    # texttemplate を使うなら安全側で
+    # fig.update_traces(texttemplate="%{text}")         
+
     # 値表示は % 付き、outside のまま
-    fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
+    # fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
     # 余白は20%くらい
     fig.update_yaxes(range=pad_range_y(g["catch_rate"], pad_ratio=0.20))
 
