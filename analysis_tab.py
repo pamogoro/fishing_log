@@ -3,6 +3,11 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from db_utils import fetch_all
+import numpy as np
+
+# 東京湾向けの潮位レンジ設定
+TIDE_MAX_CM  = 220.0   # 上限（これ以上は最後のビンにまとめる）
+TIDE_STEP_CM = 20.0    # 刻み（細かめ）
 
 def render_tap_only(fig, key=None):
     fig.update_layout(dragmode=False, hovermode="closest")
@@ -279,11 +284,25 @@ def _tide_time_heatmap(df):
     d["hour_bin_end"] = d["hour_bin_start"] + hour_step
     d["hour_bin"] = d["hour_bin_start"].astype(str) + "–" + d["hour_bin_end"].astype(str) + "時"
 
-    # 潮位ビン（自動 or しきい値固定のどちらか）
-    # 固定ビン：0,50,100,150,200,250,300+
-    edges = [0, 50, 100, 150, 200, 250, 300, d["tide_height"].max() + 1]
-    d["tide_bin"] = pd.cut(d["tide_height"], bins=edges, right=False,
-                           labels=[f"{edges[i]}–{edges[i+1]}cm" for i in range(len(edges)-1)])
+    # --- 2-b) 潮位ビン（東京湾向け：0〜220cmを20cm刻みで固定） ---
+    # 入力が上限を超えていても、最後のビンに“丸める”ためにクリップ
+    d["tide_h_cm"] = d["tide_height"].clip(lower=0, upper=TIDE_MAX_CM - 1e-6)
+
+    edges  = np.arange(0.0, TIDE_MAX_CM + 1e-6, TIDE_STEP_CM)  # 0,20,40,...,220
+    labels = [f"{int(edges[i])}–{int(edges[i+1])}cm" for i in range(len(edges)-1)]
+
+    d["tide_bin"] = pd.cut(
+        d["tide_h_cm"],
+        bins=edges,
+        right=False,           # 左閉右開 [a,b)
+        labels=labels,
+        include_lowest=True
+    )
+
+    # 念のため空判定
+    if d["tide_bin"].isna().all():
+        st.info("潮位ビンに該当するデータがありません。")
+        return
 
     # --- 3) 集計 ---
     if metric == "釣果数":
