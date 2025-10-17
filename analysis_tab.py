@@ -4,17 +4,12 @@ import plotly.express as px
 import streamlit as st
 from db_utils import fetch_all
 from streamlit_plotly_events import plotly_events
+import plotly.express as px
 
-# 余白ヘルパ：デフォルトを20%に（必要なら呼び出し側で上書き）
-# def pad_range_y(series, *, pad_ratio=0.20, tozero=True):
-#     ymin = float(series.min())
-#     ymax = float(series.max())
-#     if tozero:
-#         ymin = 0.0
-#     pad = (ymax - ymin) * pad_ratio if ymax > ymin else max(1.0, ymax) * pad_ratio
-#     return [ymin, ymax + pad]
-
-
+# グローバル既定（モジュール先頭あたりに一度だけ）
+px.defaults.template = "plotly_dark"  # Streamlit のダークと馴染む
+px.defaults.color_discrete_sequence = px.colors.qualitative.Set2  # バー/折れ線の離散色
+px.defaults.color_continuous_scale = "Viridis"  # 連続色
 
 def render_plotly_clickable(fig, *, key: str, caption: str | None = None):
     # ここでズーム/パンを完全に無効化（PCドラッグ/スマホピンチ含む）
@@ -81,8 +76,6 @@ def _tide_block(df):
         catches=("caught", "sum"),
     ).reset_index()
     g["catch_rate"] = (g["catches"] / g["trips"] * 100).round(1)
-    # g["catch_rate"] = pd.to_numeric(g["catch_rate"], errors="coerce")
-    # g["catch_rate_label"] = g["catch_rate"].map(lambda v: f"{v:.1f}%")
     # 表示順（よく使う順）に並べ替え
     order = ["大潮", "中潮", "小潮", "若潮", "長潮", "不明"]
     g["order_key"] = g["tide_type"].apply(lambda x: order.index(x) if x in order else len(order))
@@ -92,48 +85,20 @@ def _tide_block(df):
         g, x="tide_type", y="catch_rate",
         text="catch_rate",
         labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
-        title="潮回り別キャッチ率"
+        title="潮回り別キャッチ率",
+        color_discrete_sequence=px.colors.qualitative.Set2
     )
 
     # 最大値に余裕をもたせる
-    y_max = g["catch_rate"].max() * 1.15  # 15%くらい余裕を上に
-    fig.update_yaxes(range=[0, y_max])
-
-    fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
-    fig.update_layout(yaxis_title="キャッチ率（%）", 
-                    xaxis_title="潮回り", 
-                    uniformtext_minsize=8, 
-                    uniformtext_mode="hide",
-                    margin=dict(t=80, b=40, l=40, r=40),
-                    yaxis=dict(automargin=True)
-                    )
+    y_max = g["catch_rate"].max()
+    pad   = max(5, y_max * 0.15)
+    fig.update_yaxes(range=[0, y_max] + pad)
+    fig.update_traces(texttemplate="%{y:.1f}%", 
+                      textposition="outside", 
+                      cliponaxis = False, 
+                      )
+    fig.update_layout(margin=dict(t=80))
     render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
-
-    # fig = px.bar(
-    #     g, x="tide_type", y="catch_rate",
-    #     text="catch_rate_label",  # ← これを出す
-    #     labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
-    #     title="潮回り別キャッチ率"
-    # )
-    # fig.update_traces(textposition="outside")           # outside でOK
-    # # texttemplate を使うなら安全側で
-    # # fig.update_traces(texttemplate="%{text}")         
-
-    # # 値表示は % 付き、outside のまま
-    # # fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
-    # # 余白は20%くらい
-    # fig.update_yaxes(range=pad_range_y(g["catch_rate"], pad_ratio=0.20))
-
-    # # ← ここがポイント：テーマ/背景を明示（events 経由だと自動テーマが乗らない）
-    # fig.update_layout(
-    #     template="plotly_dark",
-    #     paper_bgcolor="rgba(0,0,0,0)",
-    #     plot_bgcolor="rgba(0,0,0,0)"
-    # )
-
-    # # 固定レンジは render_plotly_clickable 内でやってるのでここでは不要
-    # render_plotly_clickable(fig, key="tide_rate")
-
 
 
     with st.expander("詳細（件数内訳）"):
@@ -201,33 +166,30 @@ def _lure_block(df):
 
     # --- グラフ1：使用ルアー別の釣果回数 ---
     fig1 = px.bar(
-        g, x="lure", y="catches", text="catches",
+        g,
+        x="lure",
+        y="catches",
+        text="catches",
         labels={"lure": "ルアー", "catches": "釣果数"},
         title="ルアー別の釣果数"
     )
-    # 余白 + 軸外描画OK + 上マージン
-    ymax1 = float(g["catches"].max()) * 1.15
-    fig1.update_yaxes(range=[0, ymax1])
-    fig1.update_traces(texttemplate="%{text}", textposition="outside", cliponaxis=False)
-    fig1.update_layout(margin=dict(t=80), yaxis=dict(automargin=True))
-
+    fig1.update_traces(texttemplate="%{text}", textposition="outside")
     render_plotly_clickable(fig1, key="lure_counts")
 
 
     # --- グラフ2：ルアー別の平均サイズ ---
     fig2 = px.bar(
-        g, x="lure", y="avg_size", text="avg_size",
+        g,
+        x="lure",
+        y="avg_size",
+        text="avg_size",
         labels={"lure": "ルアー", "avg_size": "平均サイズ (cm)"},
         title="ルアー別の平均サイズ",
-        color="avg_size", color_continuous_scale="Viridis"
+        color="avg_size",
+        color_continuous_scale="Viridis"
     )
-    ymax2 = float(g["avg_size"].max()) * 1.15
-    fig2.update_yaxes(range=[0, ymax2])
-    fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside", cliponaxis=False)
-    fig2.update_layout(margin=dict(t=80), yaxis=dict(automargin=True))
-
+    fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside")
     render_plotly_clickable(fig2, key="lure_avgsize")
-
 
 
     # --- テーブル表示 ---
@@ -266,7 +228,7 @@ def _area_tide_block(df):
     )
 
     # # 最大値に余裕をもたせる
-    y_max = df_catch["tide_height"].max() * 1.15  # 15%くらい余裕を上に
+    y_max = df_catch.max() * 1.15  # 15%くらい余裕を上に
     fig.update_yaxes(range=[0, y_max])
     fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
 
