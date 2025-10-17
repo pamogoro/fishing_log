@@ -138,7 +138,6 @@ with tab1:
                     step=0.1, format="%.1f"
                 )
 
-                time_str = time_e.strftime("%H:%M") if time_e else "00:00"
             with c2:
                 tide_height = st.number_input("潮位 (cm)", step=1, min_value=0)  # ← 追加
                 wind_direction_e = st.text_input("風向", row["wind_direction"] or "")
@@ -156,6 +155,8 @@ with tab1:
             cancel = col_cancel.form_submit_button("キャンセル")
 
             if update:
+                time_str = time_e.strftime("%H:%M") if time_e else "00:00"
+                
                 update_row(
                     int(row["id"]),
                     area_e.strip(),
@@ -166,7 +167,7 @@ with tab1:
                     action_e.strip(),
                     float(size_e),
                     float(tide_height) if tide_height is not None else None,
-                    time_str
+                    time=time_str
                 )
                 st.success("✏️ 更新が完了しました")
                 st.session_state.edit_row = None
