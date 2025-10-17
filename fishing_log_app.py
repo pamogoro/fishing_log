@@ -121,7 +121,7 @@ with tab1:
         with st.form("edit_form"):
             c1, c2 = st.columns(2)
             with c1:
-                time = st.time_input("時間", datetime.now().time())  # ← 追加
+                time = st.time_input("時間", value=datetime.now().time())  # ← 追加
                 area_e = st.text_input("エリア", row["area"] or "")
                 tide_list = ["大潮", "中潮", "小潮", "若潮", "長潮"]
                 idx = tide_list.index(row["tide_type"]) if row["tide_type"] in tide_list else 1
