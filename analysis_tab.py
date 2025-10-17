@@ -233,7 +233,7 @@ def _area_tide_block(df):
     # y_max = df_catch.max() * 1.15  # 15%くらい余裕を上に
     y_max = float(df_catch["tide_height"].max()) * 1.15
     fig.update_yaxes(range=[0, y_max])
-    fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
+    fig.update_traces(texttemplate="%{y:.1f}%", textposition="outside")
 
     # fig.update_traces(marker=dict(opacity=0.6))
     fig.update_layout(showlegend=False, 
