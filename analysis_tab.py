@@ -22,7 +22,6 @@ def render_tap_only(fig, key=None):
         },
     )
 
-
 def _prep_df():
     df = fetch_all()
     if df.empty:
@@ -237,6 +236,93 @@ def _area_tide_block(df):
 
     render_tap_only(fig)
 
+def _tide_time_heatmap(df):
+    st.subheader("⏰ 潮位 × 時間帯 ヒートマップ")
+
+    if df.empty:
+        st.info("データがありません。")
+        return
+
+    # --- 1) 前処理：ボウズ除外 / 潮位・時間の欠損/ダミー除外 ---
+    d = df.copy()
+
+    # 釣れたときだけを見る（ヒット傾向を出したい前提）
+    d = d[pd.to_numeric(d["size"], errors="coerce").fillna(0) > 0]
+
+    # 潮位：数値化→欠損除外
+    d["tide_height"] = pd.to_numeric(d["tide_height"], errors="coerce")
+    d = d.dropna(subset=["tide_height"])
+
+    # “m”入力の可能性をcmに正規化（<=5をmとみなす）
+    m_mask = d["tide_height"].between(0.1, 5, inclusive="both")
+    d.loc[m_mask, "tide_height"] = d.loc[m_mask, "tide_height"] * 100
+
+    # 時間：文字列 "HH:MM" → datetime → hour
+    # 00:00 は“空欄代替”として扱って除外（必要なら残してもOK）
+    t = pd.to_datetime(d["time"], format="%H:%M", errors="coerce")
+    d = d[~((d["time"] == "00:00") | t.isna())].copy()
+    d["hour"] = t.dt.hour
+
+    if d.empty:
+        st.info("潮位と時間の有効データがありません。")
+        return
+
+    # --- 2) 設定UI：時間帯の粒度・色指標 ---
+    c1, c2 = st.columns(2)
+    with c1:
+        hour_step = st.selectbox("時間帯の粒度", [1, 2, 3], index=1, help="1=1時間刻み、2=2時間刻み…")
+    with c2:
+        metric = st.selectbox("色で表示する指標", ["釣果数", "平均サイズ"], index=0)
+
+    # 時間帯ビン（例：0-2, 2-4…）
+    d["hour_bin_start"] = (d["hour"] // hour_step) * hour_step
+    d["hour_bin_end"] = d["hour_bin_start"] + hour_step
+    d["hour_bin"] = d["hour_bin_start"].astype(str) + "–" + d["hour_bin_end"].astype(str) + "時"
+
+    # 潮位ビン（自動 or しきい値固定のどちらか）
+    # 固定ビン：0,50,100,150,200,250,300+
+    edges = [0, 50, 100, 150, 200, 250, 300, d["tide_height"].max() + 1]
+    d["tide_bin"] = pd.cut(d["tide_height"], bins=edges, right=False,
+                           labels=[f"{edges[i]}–{edges[i+1]}cm" for i in range(len(edges)-1)])
+
+    # --- 3) 集計 ---
+    if metric == "釣果数":
+        pivot = d.pivot_table(index="tide_bin", columns="hour_bin", values="id", aggfunc="count", fill_value=0)
+        color_title = "釣果数"
+    else:
+        # 釣れた魚の平均サイズ（cm）
+        pivot = d.pivot_table(index="tide_bin", columns="hour_bin", values="size", aggfunc="mean")
+        color_title = "平均サイズ (cm)"
+
+    # 軸の並びを自然順に（時間ビンを時間順で）
+    # hour_binの開始時刻でソート
+    def _hour_key(lbl):
+        try:
+            return int(lbl.split("–")[0])
+        except Exception:
+            return 0
+    cols_sorted = sorted(pivot.columns, key=_hour_key)
+    pivot = pivot[cols_sorted]
+
+    # --- 4) 可視化 ---
+    fig = px.imshow(
+        pivot,
+        aspect="auto",
+        color_continuous_scale="YlOrRd",
+        labels=dict(x="時間帯", y="潮位帯", color=color_title),
+        title="潮位 × 時間帯 ヒートマップ（釣れたデータのみ）"
+    )
+
+    # スマホ見切れ対策（上下左右余白）
+    # fig.update_layout(margin=dict(t=80, b=60, l=60, r=40))
+    # fig.update_xaxes(side="bottom")
+
+    # タップのみ有効（ズーム・パン禁止）
+    render_tap_only(fig)
+
+    # 数値の裏取り用テーブルも出す
+    st.dataframe(pivot.fillna(0).astype(float).round(1), use_container_width=True)
+
 
 def show_analysis():
     st.header("📈 分析")
@@ -259,3 +345,4 @@ def show_analysis():
     _month_block(df)
     _lure_block(df)
     _area_tide_block(df)
+    _tide_time_heatmap(df)
