@@ -90,11 +90,14 @@ with tab1:
             lure = st.text_input("ルアー（例：バクリースピン6）")
             action = st.text_input("アクション（例：スローリトリーブ）")
 
+        # time は st.time_input(...) の戻り値（datetime.time or None）
+        time_str = time.strftime("%H:%M") if time else "00:00"
+
         submitted = st.form_submit_button("登録")
         if submitted:
             insert_row(
                 date.strftime("%Y-%m-%d"),
-                time.strftime("%H:%M"),
+                time_str,
                 area.strip(),
                 tide_type,
                 float(tide_height) if tide_height is not None else None,
