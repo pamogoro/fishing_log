@@ -83,15 +83,17 @@ def _tide_block(df):
 
     fig = px.bar(
         g, x="tide_type", y="catch_rate",
-        text="catch_rate",
         labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
         title="潮回り別キャッチ率",
         color_discrete_sequence=px.colors.qualitative.Set2
     )
 
     # 最大値に余裕をもたせる
+    # y_max = g["catch_rate"].max()
+    # pad   = max(5, y_max * 0.15)
+    # fig.update_yaxes(range=[0, y_max + pad])
     y_max = g["catch_rate"].max()
-    pad   = max(5, y_max * 0.15)
+    pad = max(5.0, y_max * 0.15)
     fig.update_yaxes(range=[0, y_max + pad])
     fig.update_traces(texttemplate="%{y:.1f}%", 
                       textposition="outside", 
