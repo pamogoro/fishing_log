@@ -76,6 +76,7 @@ def _tide_block(df):
         catches=("caught", "sum"),
     ).reset_index()
     g["catch_rate"] = (g["catches"] / g["trips"] * 100).round(1)
+    print(g["catch_rate"])
     # 表示順（よく使う順）に並べ替え
     order = ["大潮", "中潮", "小潮", "若潮", "長潮", "不明"]
     g["order_key"] = g["tide_type"].apply(lambda x: order.index(x) if x in order else len(order))
