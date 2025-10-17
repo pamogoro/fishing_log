@@ -3,42 +3,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from db_utils import fetch_all
-from streamlit_plotly_events import plotly_events
-import plotly.express as px
-
-# グローバル既定（モジュール先頭あたりに一度だけ）
-px.defaults.template = "plotly_dark"  # Streamlit のダークと馴染む
-px.defaults.color_discrete_sequence = px.colors.qualitative.Set2  # バー/折れ線の離散色
-px.defaults.color_continuous_scale = "Viridis"  # 連続色
-
-def render_plotly_clickable(fig, *, key: str, caption: str | None = None):
-    # ここでズーム/パンを完全に無効化（PCドラッグ/スマホピンチ含む）
-    fig.update_xaxes(fixedrange=True)
-    fig.update_yaxes(fixedrange=True)
-    fig.update_layout(dragmode=False)  # ドラッグで何も起こらないように
-
-    # グラフ描画＋クリックイベントだけ拾う（ホバーや範囲選択は拾わない）
-    # ※ use_container_width はこのコンポーネントでは自前指定しない仕様
-    events = plotly_events(
-        fig,
-        click_event=True,
-        hover_event=False,
-        select_event=False,
-        key=key,  # 同ページ内で一意に
-    )
-
-    # クリックされた点の値を表示（x, y と追加メタを軽く）
-    if events:
-        pt = events[0]
-        x, y = pt.get("x"), pt.get("y")
-        extra = {k: v for k, v in pt.items() if k not in ("x", "y", "curveNumber", "pointNumber")}
-        with st.container():
-            st.info(f"選択: x={x}, y={y}  " + (f" / {extra}" if extra else ""))
-
-    if caption:
-        st.caption(caption)
-
-    return events
 
 def _prep_df():
     df = fetch_all()
@@ -76,7 +40,6 @@ def _tide_block(df):
         catches=("caught", "sum"),
     ).reset_index()
     g["catch_rate"] = (g["catches"] / g["trips"] * 100).round(1)
-    print(g["catch_rate"])
     # 表示順（よく使う順）に並べ替え
     order = ["大潮", "中潮", "小潮", "若潮", "長潮", "不明"]
     g["order_key"] = g["tide_type"].apply(lambda x: order.index(x) if x in order else len(order))
@@ -84,21 +47,31 @@ def _tide_block(df):
 
     fig = px.bar(
         g, x="tide_type", y="catch_rate",
+        text="catch_rate",
         labels={"tide_type": "潮回り", "catch_rate": "キャッチ率（%）"},
-        title="潮回り別キャッチ率",
-        color_discrete_sequence=px.colors.qualitative.Set2
+        title="潮回り別キャッチ率"
     )
 
     # 最大値に余裕をもたせる
-    # y_max = g["catch_rate"].max()
-    # pad = max(5.0, y_max * 0.15)
-    # fig.update_yaxes(range=[0, y_max + pad])
-    # fig.update_traces(texttemplate="%{text}", 
-    #                   textposition="outside", 
-    #                   cliponaxis = False, 
-    #                   )
-    # fig.update_layout(margin=dict(t=80))
-    render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
+    y_max = g["catch_rate"].max() * 1.15  # 15%くらい余裕を上に
+    fig.update_yaxes(range=[0, y_max])
+
+    fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+    fig.update_layout(yaxis_title="キャッチ率（%）", 
+                    xaxis_title="潮回り", 
+                    uniformtext_minsize=8, 
+                    uniformtext_mode="hide",
+                    margin=dict(t=80, b=40, l=40, r=40),
+                    yaxis=dict(automargin=True)
+                    )
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,   # スクロールでズームしない
+            "displayModeBar": False,  # 右上のツールバー非表示
+        }
+    )
 
 
     with st.expander("詳細（件数内訳）"):
@@ -128,7 +101,14 @@ def _month_block(df):
             labels={"month": "月", "trips": "釣行回数"},
             title="月別 釣行回数"
         )
-        render_plotly_clickable(fig1, key="month_trips")
+        st.plotly_chart(
+            fig1,
+            use_container_width=True,
+            config={
+                "scrollZoom": False,   # スクロールでズームしない
+                "displayModeBar": False,  # 右上のツールバー非表示
+            }
+        )
 
     with c2:
         fig2 = px.line(
@@ -136,7 +116,14 @@ def _month_block(df):
             labels={"month": "月", "catch_rate": "キャッチ率（%）"},
             title="月別 キャッチ率"
         )
-        render_plotly_clickable(fig2, key="month_rate")
+        st.plotly_chart(
+            fig2,
+            use_container_width=True,
+            config={
+                "scrollZoom": False,   # スクロールでズームしない
+                "displayModeBar": False,  # 右上のツールバー非表示
+            }
+        )
 
 
     with st.expander("詳細（件数・平均サイズ）"):
@@ -174,7 +161,14 @@ def _lure_block(df):
         title="ルアー別の釣果数"
     )
     fig1.update_traces(texttemplate="%{text}", textposition="outside")
-    render_plotly_clickable(fig1, key="lure_counts")
+    st.plotly_chart(
+        fig1,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,   # スクロールでズームしない
+            "displayModeBar": False,  # 右上のツールバー非表示
+        }
+    )
 
 
     # --- グラフ2：ルアー別の平均サイズ ---
@@ -189,7 +183,14 @@ def _lure_block(df):
         color_continuous_scale="Viridis"
     )
     fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    render_plotly_clickable(fig2, key="lure_avgsize")
+    st.plotly_chart(
+        fig2,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,   # スクロールでズームしない
+            "displayModeBar": False,  # 右上のツールバー非表示
+        }
+    )
 
 
     # --- テーブル表示 ---
@@ -227,13 +228,11 @@ def _area_tide_block(df):
         title="エリア別 潮位分布と釣果"
     )
 
-    # # 最大値に余裕をもたせる
-    # y_max = df_catch.max() * 1.15  # 15%くらい余裕を上に
-    y_max = float(df_catch["tide_height"].max()) * 1.15
+    # 最大値に余裕をもたせる
+    y_max = df_catch["tide_height"].max() * 1.15  # 15%くらい余裕を上に
     fig.update_yaxes(range=[0, y_max])
-    fig.update_traces(texttemplate="%{y:.1f}", textposition="outside")
 
-    # fig.update_traces(marker=dict(opacity=0.6))
+    fig.update_traces(marker=dict(opacity=0.6))
     fig.update_layout(showlegend=False, 
                     yaxis_title="潮位 (cm)", 
                     xaxis_title="エリア",
@@ -241,7 +240,14 @@ def _area_tide_block(df):
                     yaxis=dict(automargin=True)
                     )
 
-    render_plotly_clickable(fig, key="area_tide")
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,   # スクロールでズームしない
+            "displayModeBar": False,  # 右上のツールバー非表示
+        }
+    )
 
 
 def show_analysis():
