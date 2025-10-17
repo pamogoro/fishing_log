@@ -122,14 +122,7 @@ def _month_block(df):
             labels={"month": "月", "trips": "釣行回数"},
             title="月別 釣行回数"
         )
-        st.plotly_chart(
-            fig1,
-            use_container_width=True,
-            config={
-                "scrollZoom": False,   # スクロールでズームしない
-                "displayModeBar": False,  # 右上のツールバー非表示
-            }
-        )
+        render_tap_only(fig1)
 
     with c2:
         fig2 = px.line(
@@ -137,14 +130,7 @@ def _month_block(df):
             labels={"month": "月", "catch_rate": "キャッチ率（%）"},
             title="月別 キャッチ率"
         )
-        st.plotly_chart(
-            fig2,
-            use_container_width=True,
-            config={
-                "scrollZoom": False,   # スクロールでズームしない
-                "displayModeBar": False,  # 右上のツールバー非表示
-            }
-        )
+        render_tap_only(fig2)
 
 
     with st.expander("詳細（件数・平均サイズ）"):
@@ -181,15 +167,9 @@ def _lure_block(df):
         labels={"lure": "ルアー", "catches": "釣果数"},
         title="ルアー別の釣果数"
     )
+
     fig1.update_traces(texttemplate="%{text}", textposition="outside")
-    st.plotly_chart(
-        fig1,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    render_tap_only(fig1)
 
 
     # --- グラフ2：ルアー別の平均サイズ ---
@@ -203,15 +183,9 @@ def _lure_block(df):
         color="avg_size",
         color_continuous_scale="Viridis"
     )
+
     fig2.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    st.plotly_chart(
-        fig2,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    render_tap_only(fig2)
 
 
     # --- テーブル表示 ---
@@ -261,14 +235,7 @@ def _area_tide_block(df):
                     yaxis=dict(automargin=True)
                     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    render_tap_only(fig)
 
 
 def show_analysis():
