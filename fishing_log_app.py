@@ -50,10 +50,19 @@ def update_row(row_id, area, tide_type, temperature, wind_direction, lure, actio
     with get_conn() as conn:
         conn.execute("""
             UPDATE fishing_log
-            SET area=?, tide_type=?, temperature=?, wind_direction=?, lure=?, action=?, size=?, tide_height=?, time=?
+            SET area=?,
+                tide_type=?,
+                temperature=?,
+                wind_direction=?,
+                lure=?,
+                action=?,
+                size=?,
+                tide_height=?,
+                time=?
             WHERE id=?
-        """, (area, tide_type, temperature, wind_direction, lure, action, size, row_id, tide_height, time))
+        """, (area, tide_type, temperature, wind_direction, lure, action, size, tide_height, time, row_id))
         conn.commit()
+
 
 def delete_row(row_id):
     with get_conn() as conn:
@@ -154,21 +163,28 @@ with tab1:
             update = col_ok.form_submit_button("更新")
             cancel = col_cancel.form_submit_button("キャンセル")
 
+            # （右側カラム）
+            tide_height_e = st.number_input(
+                "潮位 (cm)",
+                value=float(row["tide_height"]) if row["tide_height"] is not None else 0.0,
+                step=1.0
+            )
+
             if update:
                 time_str = time_e.strftime("%H:%M") if time_e else "00:00"
                 
                 update_row(
-                    int(row["id"]),
-                    area_e.strip(),
-                    tide_type_e,
-                    float(temperature_e),
-                    wind_direction_e.strip(),
-                    lure_e.strip(),
-                    action_e.strip(),
-                    float(size_e),
-                    float(tide_height) if tide_height is not None else None,
-                    time=time_str
-                )
+                int(row["id"]),
+                area_e.strip(),
+                tide_type_e,
+                float(temperature_e),
+                wind_direction_e.strip(),
+                lure_e.strip(),
+                action_e.strip(),
+                float(size_e),
+                float(tide_height_e) if tide_height_e is not None else None,
+                time=time_str
+            )
                 st.success("✏️ 更新が完了しました")
                 st.session_state.edit_row = None
                 st.rerun()
