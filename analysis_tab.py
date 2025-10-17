@@ -90,16 +90,13 @@ def _tide_block(df):
 
     # 最大値に余裕をもたせる
     # y_max = g["catch_rate"].max()
-    # pad   = max(5, y_max * 0.15)
+    # pad = max(5.0, y_max * 0.15)
     # fig.update_yaxes(range=[0, y_max + pad])
-    y_max = g["catch_rate"].max()
-    pad = max(5.0, y_max * 0.15)
-    fig.update_yaxes(range=[0, y_max + pad])
-    fig.update_traces(texttemplate="%{text}", 
-                      textposition="outside", 
-                      cliponaxis = False, 
-                      )
-    fig.update_layout(margin=dict(t=80))
+    # fig.update_traces(texttemplate="%{text}", 
+    #                   textposition="outside", 
+    #                   cliponaxis = False, 
+    #                   )
+    # fig.update_layout(margin=dict(t=80))
     render_plotly_clickable(fig, key="tide_rate", caption="※ ドラッグ/ピンチでのズームは不可。タップ/クリックで値を表示。")
 
 
