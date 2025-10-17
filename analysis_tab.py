@@ -4,6 +4,25 @@ import plotly.express as px
 import streamlit as st
 from db_utils import fetch_all
 
+def render_tap_only(fig, key=None):
+    fig.update_layout(dragmode=False, hovermode="closest")
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    st.plotly_chart(
+        fig, use_container_width=True, key=key,
+        config={
+            "scrollZoom": False,
+            "doubleClick": False,
+            "displayModeBar": False,
+            "displaylogo": False,
+            "modeBarButtonsToRemove": [
+                "zoom","pan","select","lasso2d",
+                "zoomIn2d","zoomOut2d","autoScale2d","resetScale2d"
+            ],
+        },
+    )
+
+
 def _prep_df():
     df = fetch_all()
     if df.empty:
@@ -64,14 +83,16 @@ def _tide_block(df):
                     margin=dict(t=80, b=40, l=40, r=40),
                     yaxis=dict(automargin=True)
                     )
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={
-            "scrollZoom": False,   # スクロールでズームしない
-            "displayModeBar": False,  # 右上のツールバー非表示
-        }
-    )
+    # st.plotly_chart(
+    #     fig,
+    #     use_container_width=True,
+    #     config={
+    #         "scrollZoom": False,   # スクロールでズームしない
+    #         "displayModeBar": False,  # 右上のツールバー非表示
+    #     }
+    # )
+
+    render_tap_only(fig)
 
 
     with st.expander("詳細（件数内訳）"):
