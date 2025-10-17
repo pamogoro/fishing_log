@@ -121,7 +121,14 @@ with tab1:
         with st.form("edit_form"):
             c1, c2 = st.columns(2)
             with c1:
-                time = st.time_input("時間", value=datetime.now().time())  # ← 追加
+                def_time = None
+                if row.get("time"):
+                    try:
+                        def_time = datetime.strptime(row["time"], "%H:%M").time()
+                    except ValueError:
+                        pass
+                time_e = st.time_input("時間", value=def_time, key=f"time_e_{row['id']}")
+                # time = st.time_input("時間", value=datetime.now().time())  # ← 追加
                 area_e = st.text_input("エリア", row["area"] or "")
                 tide_list = ["大潮", "中潮", "小潮", "若潮", "長潮"]
                 idx = tide_list.index(row["tide_type"]) if row["tide_type"] in tide_list else 1
@@ -130,6 +137,8 @@ with tab1:
                     "気温 (℃)", value=float(row["temperature"]) if row["temperature"] is not None else 0.0,
                     step=0.1, format="%.1f"
                 )
+
+                time_str = time_e.strftime("%H:%M") if time_e else "00:00"
             with c2:
                 tide_height = st.number_input("潮位 (cm)", step=1, min_value=0)  # ← 追加
                 wind_direction_e = st.text_input("風向", row["wind_direction"] or "")
@@ -157,7 +166,7 @@ with tab1:
                     action_e.strip(),
                     float(size_e),
                     float(tide_height) if tide_height is not None else None,
-                    time.strftime("%H:%M")
+                    time_str
                 )
                 st.success("✏️ 更新が完了しました")
                 st.session_state.edit_row = None
