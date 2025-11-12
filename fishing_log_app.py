@@ -6,69 +6,75 @@ import streamlit as st
 from analysis_tab import show_analysis
 from db_utils_gsheets import fetch_all, insert_row, update_row, delete_row
 
+def _coerce_types_for_sort(df: pd.DataFrame) -> pd.DataFrame:
+    d = df.copy()
+    d["date_dt"] = pd.to_datetime(d["date"], errors="coerce")
+    d["time_dt"] = pd.to_datetime(d["time"], format="%H:%M", errors="coerce")
+    d["size_num"] = pd.to_numeric(d["size"], errors="coerce")
+    return d
+
+def _sort_logs(df: pd.DataFrame) -> pd.DataFrame:
+    d = _coerce_types_for_sort(df)
+
+    # --- 初期値（初回ロード時は「日付・新しい順・サブなし」） ---
+    if "sort_key_col" not in st.session_state:
+        st.session_state.sort_key_col = "日付"
+    if "sort_order" not in st.session_state:
+        st.session_state.sort_order = "新しい順"
+    if "sort_sub_key" not in st.session_state:
+        st.session_state.sort_sub_key = "（なし）"
+
+    st.markdown("### 一覧のソート")
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        key_col = st.selectbox(
+            "ソート対象",
+            ["日付", "サイズ"],
+            index=["日付","サイズ"].index(st.session_state.sort_key_col),
+            key="sort_key_col",
+            help="並び替えたい項目を選んでください"
+        )
+    with c2:
+        if key_col == "日付":
+            order_options = ["新しい順", "古い順"]
+        else:
+            order_options = ["大きい順", "小さい順"]
+        order = st.radio(
+            "順序", order_options,
+            index=order_options.index(st.session_state.sort_order if st.session_state.sort_order in order_options else order_options[0]),
+            key="sort_order",
+            horizontal=True
+        )
+    with c3:
+        sub_options = ["（なし）", "時間", "サイズ", "日付"]
+        sub_key = st.selectbox(
+            "サブソート", sub_options,
+            index=sub_options.index(st.session_state.sort_sub_key),
+            key="sort_sub_key",
+            help="同値のときの並び順（任意）"
+        )
+
+    # メインキー / 並び方向
+    if key_col == "日付":
+        key = "date_dt"
+        ascending = (order == "古い順")   # 新しい順=降順
+    else:
+        key = "size_num"
+        ascending = (order == "小さい順") # 大きい順=降順
+
+    # サブキー
+    sub_map = {"（なし）": [], "時間": ["time_dt"], "サイズ": ["size_num"], "日付": ["date_dt"]}
+    by_cols = [key] + sub_map[sub_key]
+    asc_list = [ascending] + ([True] * len(sub_map[sub_key]))  # サブは昇順で自然に
+
+    d_sorted = d.sort_values(by=by_cols, ascending=asc_list, na_position="last").copy()
+
+    display_cols = ["id","date","time","area","tide_type","tide_height","temperature",
+                    "wind_direction","lure","action","size"]
+    return d_sorted[display_cols]
+
 st.set_page_config(page_title="釣行ログ管理", page_icon="🎣", layout="centered")
-
-# DB_PATH = "fishing_log.db"
-
-# ---------- DBユーティリティ ----------
-# def get_conn():
-#     # 操作ごとに新規接続（ロック回避 & Streamlit再実行に強い）
-#     return sqlite3.connect(DB_PATH, check_same_thread=False)
-
-# def init_db():
-#     with get_conn() as conn:
-#         conn.execute("""
-#         CREATE TABLE IF NOT EXISTS fishing_log (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             date TEXT,
-#             area TEXT,
-#             tide_type TEXT,
-#             temperature REAL,
-#             wind_direction TEXT,
-#             lure TEXT,
-#             action TEXT,
-#             size REAL,
-#             time TEXT,
-#             tide_height REAL
-#         )
-#         """)
-#         conn.commit()
-
-# def fetch_all():
-#     with get_conn() as conn:
-#         return pd.read_sql("SELECT * FROM fishing_log ORDER BY date DESC, id DESC", conn)
-
-# def insert_row(date, time, area, tide_type, tide_height, temperature, wind_direction, lure, action, size):
-#     with get_conn() as conn:
-#         conn.execute("""
-#             INSERT INTO fishing_log
-#             (date, time, area, tide_type, tide_height, temperature, wind_direction, lure, action, size)
-#             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-#         """, (date, time, area, tide_type, tide_height, temperature, wind_direction, lure, action, size))
-#         conn.commit()
-
-# def update_row(row_id, area, tide_type, temperature, wind_direction, lure, action, size, tide_height, time):
-#     with get_conn() as conn:
-#         conn.execute("""
-#             UPDATE fishing_log
-#             SET area=?,
-#                 tide_type=?,
-#                 temperature=?,
-#                 wind_direction=?,
-#                 lure=?,
-#                 action=?,
-#                 size=?,
-#                 tide_height=?,
-#                 time=?
-#             WHERE id=?
-#         """, (area, tide_type, temperature, wind_direction, lure, action, size, tide_height, time, row_id))
-#         conn.commit()
-
-
-# def delete_row(row_id):
-#     with get_conn() as conn:
-#         conn.execute("DELETE FROM fishing_log WHERE id=?", (row_id,))
-#         conn.commit()
 
 tab1, tab2 = st.tabs(["🎣 釣行データ", "📈 分析"])
 
@@ -198,6 +204,8 @@ with tab1:
 
     # ---------- 一覧表示 & 行ごとの操作 ----------
     df = fetch_all()
+    df_sorted = _sort_logs(df)
+    st.dataframe(df_sorted, use_container_width=True)
 
     if df.empty:
         st.info("まだデータがありません。上のフォームから登録してください。")
