@@ -74,6 +74,125 @@ def _sort_logs(df: pd.DataFrame) -> pd.DataFrame:
                     "wind_direction","lure","action","size"]
     return d_sorted[display_cols]
 
+# 既存: df = fetch_all() の後に呼ぶ
+def render_log_table_with_actions(df: pd.DataFrame):
+    if df is None or df.empty:
+        st.info("データがありません。")
+        return
+
+    # --- 型整形（ソート用） ---
+    d = df.copy()
+    d["date_dt"] = pd.to_datetime(d["date"], errors="coerce")
+    d["time_dt"] = pd.to_datetime(d["time"], format="%H:%M", errors="coerce")
+    d["size_num"] = pd.to_numeric(d["size"], errors="coerce")
+
+    # 初期は「日付の新しい順」
+    d = d.sort_values(by=["date_dt","time_dt"], ascending=[False, True], na_position="last")
+
+    # 表示用の列順に戻し、アクション列を付与
+    display_cols = ["id","date","time","area","tide_type","tide_height",
+                    "temperature","wind_direction","lure","action","size"]
+    d = d[display_cols].reset_index(drop=True)
+    d["編集"] = False
+    d["削除"] = False
+
+    # --- データエディタ（表内でチェック可能） ---
+    edited_df = st.data_editor(
+        d,
+        use_container_width=True,
+        hide_index=True,
+        num_rows="fixed",
+        column_config={
+            "編集": st.column_config.CheckboxColumn("編集", help="この行を編集します"),
+            "削除": st.column_config.CheckboxColumn("削除", help="この行を削除します"),
+            # 主要列の見出し整形（任意）
+            "tide_height": st.column_config.NumberColumn("潮位(cm)", format="%.0f"),
+            "temperature": st.column_config.NumberColumn("気温(℃)", format="%.1f"),
+            "size":        st.column_config.NumberColumn("サイズ(cm)", format="%.0f"),
+        },
+    )
+
+    # --- 編集対象（複数チェックされていても先頭だけ扱う） ---
+    edit_rows = edited_df.index[edited_df["編集"] == True].tolist()
+    delete_rows = edited_df.index[edited_df["削除"] == True].tolist()
+
+    # ----- 編集フロー -----
+    if edit_rows:
+        i = edit_rows[0]
+        row = edited_df.loc[i]
+
+        st.markdown("#### ✏️ 編集")
+        c1, c2 = st.columns(2)
+        with st.form(f"edit_form_{int(row['id'])}"):
+            # 既存値→ウィジェット
+            # 日付はそのまま表示（編集対象に含めないなら読み取り専用で）
+            st.write(f"ID: {int(row['id'])}　/　日付: {row['date']}")
+
+            with c1:
+                area_e = st.text_input("エリア", value=str(row["area"] or ""))
+                tide_e = st.selectbox("潮回り", ["大潮","中潮","小潮","若潮","長潮"],
+                                      index=["大潮","中潮","小潮","若潮","長潮"].index(str(row["tide_type"])) if str(row["tide_type"]) in ["大潮","中潮","小潮","若潮","長潮"] else 1)
+
+                # 時間：文字列 "HH:MM" → time型
+                def_time = None
+                try:
+                    if isinstance(row["time"], str) and row["time"]:
+                        def_time = datetime.strptime(row["time"], "%H:%M").time()
+                except Exception:
+                    pass
+                time_e = st.time_input("時間", value=def_time, key=f"time_e_{int(row['id'])}")
+
+            with c2:
+                temp_e = st.number_input("気温(℃)", value=float(row["temperature"]) if pd.notna(row["temperature"]) else 0.0, step=0.1, format="%.1f")
+                tide_h_e = st.number_input("潮位(cm)", value=float(row["tide_height"]) if pd.notna(row["tide_height"]) else 0.0, step=1.0)
+                wind_e = st.text_input("風向", value=str(row["wind_direction"] or ""))
+                lure_e = st.text_input("ルアー", value=str(row["lure"] or ""))
+                act_e  = st.text_input("アクション", value=str(row["action"] or ""))
+                size_e = st.number_input("サイズ(cm)", value=int(row["size"]) if pd.notna(row["size"]) else 0, step=1, min_value=0)
+
+            col_upd, col_cancel = st.columns([1,1])
+            do_update = col_upd.form_submit_button("更新")
+            cancel = col_cancel.form_submit_button("キャンセル")
+
+            if do_update:
+                from db_utils_gsheets import update_row  # 置き換え後の実装を想定
+                time_str = time_e.strftime("%H:%M") if time_e else "00:00"
+                update_row(
+                    row_id=int(row["id"]),
+                    area=area_e.strip(),
+                    tide_type=tide_e,
+                    temperature=float(temp_e),
+                    wind_direction=wind_e.strip(),
+                    lure=lure_e.strip(),
+                    action=act_e.strip(),
+                    size=int(size_e),
+                    tide_height=float(tide_h_e),
+                    time=time_str,
+                )
+                st.success("更新しました")
+                st.rerun()
+
+            if cancel:
+                st.info("編集をキャンセルしました")
+                st.rerun()
+
+    # ----- 削除フロー -----
+    if delete_rows:
+        ids = [int(edited_df.loc[i, "id"]) for i in delete_rows if pd.notna(edited_df.loc[i, "id"])]
+        with st.expander(f"🗑️ 削除の確認（{len(ids)}件）", expanded=True):
+            st.write("削除対象ID:", ids)
+            col_yes, col_no = st.columns([1,1])
+            if col_yes.button("削除を実行", type="primary"):
+                from db_utils_gsheets import delete_row
+                for _id in ids:
+                    delete_row(_id)
+                st.success(f"{len(ids)}件を削除しました")
+                st.rerun()
+            if col_no.button("やめる"):
+                st.info("削除をキャンセルしました")
+                st.rerun()
+
+
 st.set_page_config(page_title="釣行ログ管理", page_icon="🎣", layout="centered")
 
 tab1, tab2 = st.tabs(["🎣 釣行データ", "📈 分析"])
@@ -204,35 +323,8 @@ with tab1:
 
     # ---------- 一覧表示 & 行ごとの操作 ----------
     df = fetch_all()
-    df_sorted = _sort_logs(df)
-    st.dataframe(df_sorted, use_container_width=True)
+    render_log_table_with_actions(df)
 
-    if df.empty:
-        st.info("まだデータがありません。上のフォームから登録してください。")
-    else:
-        for _, r in df.iterrows():
-            # 列構成：データ表示（広め）＋ 編集ボタン＋ 削除ボタン
-            c1, c2, c3 = st.columns([8, 1, 1])
-            with c1:
-                st.markdown(
-                    f"📅 **{r['date']}** {r['time'] or ''}　"
-                    f"🎣 **{r['area']}**　🌊 {r['tide_type']} "
-                    f"({r['tide_height'] if r['tide_height'] is not None else '-'}cm)　"
-                    f"🌡️ {r['temperature'] if r['temperature'] is not None else '-'}℃　"
-                    f"🍃 {r['wind_direction'] or '-'}　"
-                    f"🪝 {r['lure'] or '-'}／{r['action'] or '-'}　"
-                    f"📏 {int(r['size']) if r['size'] is not None else '-'}cm"
-                )
-            with c2:
-                if st.button("✏️", key=f"edit_{r['id']}"):
-                    st.session_state.edit_row = dict(r)
-                    st.rerun()
-            with c3:
-                if st.button("🗑️", key=f"del_{r['id']}"):
-                    delete_row(int(r["id"]))
-                    st.warning("🗑️ 削除が完了しました")
-                    st.rerun()
-            st.divider()
 
 with tab2:
     show_analysis()
