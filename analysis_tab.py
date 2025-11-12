@@ -2,8 +2,9 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from db_utils import fetch_all
+# from db_utils import fetch_all
 import numpy as np
+from db_utils_gsheets import fetch_all
 
 # 東京湾向けの潮位レンジ設定
 TIDE_MAX_CM  = 220.0   # 上限（これ以上は最後のビンにまとめる）
