@@ -91,7 +91,7 @@ def render_log_table_with_actions(df: pd.DataFrame):
 
     # 表示用の列順に戻し、アクション列を付与
     display_cols = ["id","date","time","area","tide_type","tide_height",
-                    "temperature","wind_direction","lure","action","size"]
+                    "temperature","wind_direction","lure","action","size","image_url"]
     d = d[display_cols].reset_index(drop=True)
     d["編集"] = False
     d["削除"] = False
@@ -109,6 +109,7 @@ def render_log_table_with_actions(df: pd.DataFrame):
             "tide_height": st.column_config.NumberColumn("潮位(cm)", format="%.0f"),
             "temperature": st.column_config.NumberColumn("気温(℃)", format="%.1f"),
             "size":        st.column_config.NumberColumn("サイズ(cm)", format="%.0f"),
+        "image_url": st.column_config.TextColumn("画像URL", disabled=True, width="small"),  # 表示だけ or 後で非表示にしてもOK
         },
     )
 
@@ -127,6 +128,21 @@ def render_log_table_with_actions(df: pd.DataFrame):
             # 既存値→ウィジェット
             # 日付はそのまま表示（編集対象に含めないなら読み取り専用で）
             st.write(f"ID: {int(row['id'])}　/　日付: {row['date']}")
+
+            # 既存の URL（編集後、画像未選択ならこれを使う）
+            existing_image_url = row.get("image_url", "")
+
+            # 新しい画像選択（任意）
+            image_file = st.file_uploader(
+                "釣果写真（変更する場合のみアップロード）",
+                type=["jpg", "jpeg", "png"],
+                key=f"edit_image_{row['id']}"
+            )
+
+            # 既存の写真がある場合はプレビュー表示
+            if existing_image_url:
+                st.image(existing_image_url, caption="現在の画像", use_column_width=True)
+
 
             with c1:
                 area_e = st.text_input("エリア", value=str(row["area"] or ""))
@@ -155,8 +171,16 @@ def render_log_table_with_actions(df: pd.DataFrame):
             cancel = col_cancel.form_submit_button("キャンセル")
 
             if do_update:
-                from db_utils_gsheets import update_row  # 置き換え後の実装を想定
+                from db_utils_gsheets import update_row, upload_image_to_drive
                 time_str = time_e.strftime("%H:%M") if time_e else "00:00"
+
+                # ここで初めて image_url を決める
+                if image_file is not None:
+                    filename = f"{row['id']}_{row['date']}_{image_file.name}"
+                    image_url = upload_image_to_drive(image_file, filename)
+                else:
+                    image_url = existing_image_url
+
                 update_row(
                     row_id=int(row["id"]),
                     area=area_e.strip(),
@@ -168,9 +192,11 @@ def render_log_table_with_actions(df: pd.DataFrame):
                     size=int(size_e),
                     tide_height=float(tide_h_e),
                     time=time_str,
+                    image_url=image_url,
                 )
                 st.success("更新しました")
                 st.rerun()
+
 
             if cancel:
                 st.info("編集をキャンセルしました")
@@ -225,11 +251,23 @@ with tab1:
             lure = st.text_input("ルアー（例：バクリースピン6）")
             action = st.text_input("アクション（例：スローリトリーブ）")
 
+        # 🔽 ここ追加：1登録につき1枚の写真
+        image_file = st.file_uploader(
+            "釣果写真（1枚まで）",
+            type=["jpg", "jpeg", "png"]
+        )
+
         # time は st.time_input(...) の戻り値（datetime.time or None）
         time_str = time.strftime("%H:%M") if time else "00:00"
 
         submitted = st.form_submit_button("登録")
         if submitted:
+            image_url = None
+            if image_file is not None:
+                from db_utils_gsheets import upload_image_to_drive
+                filename = f"{date.strftime('%Y%m%d')}_{area}_{image_file.name}"
+                image_url = upload_image_to_drive(image_file, filename)
+            
             insert_row(
                 date.strftime("%Y-%m-%d"),
                 time_str,
@@ -240,7 +278,8 @@ with tab1:
                 wind_direction.strip(),
                 lure.strip(),
                 action.strip(),
-                float(size) if size is not None else None
+                float(size) if size is not None else None,
+                image_url,
             )
             st.success("✅ 登録が完了しました")
             st.rerun()
@@ -249,77 +288,77 @@ with tab1:
     st.subheader("登録済みデータ")
 
     # ---------- 編集フォーム（必要時だけ表示） ----------
-    if st.session_state.edit_row:
-        row = st.session_state.edit_row
-        st.markdown(f"**✏️ 編集モード（ID: {row['id']}）**")
+    # if st.session_state.edit_row:
+    #     row = st.session_state.edit_row
+    #     st.markdown(f"**✏️ 編集モード（ID: {row['id']}）**")
 
-        with st.form("edit_form"):
-            c1, c2 = st.columns(2)
-            with c1:
-                def_time = None
-                if row.get("time"):
-                    try:
-                        def_time = datetime.strptime(row["time"], "%H:%M").time()
-                    except ValueError:
-                        pass
-                time_e = st.time_input("時間", value=def_time, key=f"time_e_{row['id']}")
-                # time = st.time_input("時間", value=datetime.now().time())  # ← 追加
-                area_e = st.text_input("エリア", row["area"] or "")
-                tide_list = ["大潮", "中潮", "小潮", "若潮", "長潮"]
-                idx = tide_list.index(row["tide_type"]) if row["tide_type"] in tide_list else 1
-                tide_type_e = st.selectbox("潮回り", tide_list, index=idx)
-                temperature_e = st.number_input(
-                    "気温 (℃)", value=float(row["temperature"]) if row["temperature"] is not None else 0.0,
-                    step=0.1, format="%.1f"
-                )
+    #     with st.form("edit_form"):
+    #         c1, c2 = st.columns(2)
+    #         with c1:
+    #             def_time = None
+    #             if row.get("time"):
+    #                 try:
+    #                     def_time = datetime.strptime(row["time"], "%H:%M").time()
+    #                 except ValueError:
+    #                     pass
+    #             time_e = st.time_input("時間", value=def_time, key=f"time_e_{row['id']}")
+    #             # time = st.time_input("時間", value=datetime.now().time())  # ← 追加
+    #             area_e = st.text_input("エリア", row["area"] or "")
+    #             tide_list = ["大潮", "中潮", "小潮", "若潮", "長潮"]
+    #             idx = tide_list.index(row["tide_type"]) if row["tide_type"] in tide_list else 1
+    #             tide_type_e = st.selectbox("潮回り", tide_list, index=idx)
+    #             temperature_e = st.number_input(
+    #                 "気温 (℃)", value=float(row["temperature"]) if row["temperature"] is not None else 0.0,
+    #                 step=0.1, format="%.1f"
+    #             )
 
-            with c2:
-                tide_height = st.number_input("潮位 (cm)", step=1, min_value=0)  # ← 追加
-                wind_direction_e = st.text_input("風向", row["wind_direction"] or "")
-                lure_e = st.text_input("ルアー", row["lure"] or "")
-                action_e = st.text_input("アクション", row["action"] or "")
-                size_e = st.number_input(
-                        "サイズ (cm)",
-                        value=int(row["size"]) if row["size"] is not None else 0,
-                        step=1,
-                        min_value=0
-                    )
+    #         with c2:
+    #             tide_height = st.number_input("潮位 (cm)", step=1, min_value=0)  # ← 追加
+    #             wind_direction_e = st.text_input("風向", row["wind_direction"] or "")
+    #             lure_e = st.text_input("ルアー", row["lure"] or "")
+    #             action_e = st.text_input("アクション", row["action"] or "")
+    #             size_e = st.number_input(
+    #                     "サイズ (cm)",
+    #                     value=int(row["size"]) if row["size"] is not None else 0,
+    #                     step=1,
+    #                     min_value=0
+    #                 )
 
-            col_ok, col_cancel = st.columns(2)
-            update = col_ok.form_submit_button("更新")
-            cancel = col_cancel.form_submit_button("キャンセル")
+    #         col_ok, col_cancel = st.columns(2)
+    #         update = col_ok.form_submit_button("更新")
+    #         cancel = col_cancel.form_submit_button("キャンセル")
 
-            # （右側カラム）
-            tide_height_e = st.number_input(
-                "潮位 (cm)",
-                value=float(row["tide_height"]) if row["tide_height"] is not None else 0.0,
-                step=1.0
-            )
+    #         # （右側カラム）
+    #         tide_height_e = st.number_input(
+    #             "潮位 (cm)",
+    #             value=float(row["tide_height"]) if row["tide_height"] is not None else 0.0,
+    #             step=1.0
+    #         )
 
-            if update:
-                time_str = time_e.strftime("%H:%M") if time_e else "00:00"
+    #         if update:
+    #             time_str = time_e.strftime("%H:%M") if time_e else "00:00"
                 
-                update_row(
-                int(row["id"]),
-                area_e.strip(),
-                tide_type_e,
-                float(temperature_e),
-                wind_direction_e.strip(),
-                lure_e.strip(),
-                action_e.strip(),
-                float(size_e),
-                float(tide_height_e) if tide_height_e is not None else None,
-                time=time_str
-            )
-                st.success("✏️ 更新が完了しました")
-                st.session_state.edit_row = None
-                st.rerun()
+    #             update_row(
+    #             int(row["id"]),
+    #             area_e.strip(),
+    #             tide_type_e,
+    #             float(temperature_e),
+    #             wind_direction_e.strip(),
+    #             lure_e.strip(),
+    #             action_e.strip(),
+    #             float(size_e),
+    #             float(tide_height_e) if tide_height_e is not None else None,
+    #             time=time_str
+    #         )
+    #             st.success("✏️ 更新が完了しました")
+    #             st.session_state.edit_row = None
+    #             st.rerun()
 
 
-            if cancel:
-                st.info("✋ 編集をキャンセルしました")
-                st.session_state.edit_row = None
-                st.rerun()
+    #         if cancel:
+    #             st.info("✋ 編集をキャンセルしました")
+    #             st.session_state.edit_row = None
+    #             st.rerun()
 
     # ---------- 一覧表示 & 行ごとの操作 ----------
     df = fetch_all()

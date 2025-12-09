@@ -7,7 +7,7 @@ from typing import Optional
 
 # 列定義（ヘッダ順を固定）
 COLUMNS = ["id","date","time","area","tide_type","tide_height","temperature",
-           "wind_direction","lure","action","size"]
+           "wind_direction","lure","action","size","image_url"]
 SHEET_NAME = "logs"  # シート名は好きに
 
 @st.cache_resource(show_spinner=False)
@@ -58,7 +58,9 @@ def _next_id(df: pd.DataFrame) -> int:
 def insert_row(date: str, time: Optional[str], area: str, tide_type: str,
                tide_height: Optional[float], temperature: Optional[float],
                wind_direction: Optional[str], lure: Optional[str],
-               action: Optional[str], size: Optional[float]) -> None:
+               action: Optional[str], size: Optional[float],
+               image_url: Optional[str] = None,
+               ) -> None:
     ws = _ws()
     df = fetch_all()
     new_id = _next_id(df)
@@ -74,12 +76,14 @@ def insert_row(date: str, time: Optional[str], area: str, tide_type: str,
         lure or "",
         action or "",
         "" if size is None else str(size),
+        image_url or "",
     ]
     ws.append_row(row, value_input_option="USER_ENTERED")
 
 def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[float],
                wind_direction: Optional[str], lure: Optional[str], action: Optional[str],
-               size: Optional[float], tide_height: Optional[float], time: Optional[str]) -> None:
+               size: Optional[float], tide_height: Optional[float], time: Optional[str],
+               image_url: Optional[str] = None) -> None:
     ws = _ws()
     ids = ws.col_values(1)
     try:
@@ -89,6 +93,7 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
 
     # date は既存を保持（必要なら外から渡すように拡張してOK）
     existing_date = ws.cell(r, 2).value or ""
+    existing_image_url = ws.cell(r, 12).value or ""
 
     values = [
         str(row_id),
@@ -102,6 +107,7 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
         lure or "",
         action or "",
         "" if size is None else str(size),
+        image_url or existing_image_url,
     ]
     ws.update(f"A{r}:K{r}", [values], value_input_option="USER_ENTERED")
 
@@ -115,3 +121,50 @@ def delete_row(row_id: int) -> None:
     if r == 1:  # ヘッダ保護
         return
     ws.delete_rows(r)
+
+def upload_image_to_drive(file, filename: str) -> str:
+    """
+    Streamlit の file_uploader で受け取った file を
+    Google Drive にアップロードして、その公開URLを返す
+    """
+    import io
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaIoBaseUpload
+
+    scopes = ["https://www.googleapis.com/auth/drive"]
+    sa = {k: st.secrets["gsheets"][k] for k in (
+        "type","project_id","private_key_id","private_key","client_email","client_id",
+        "auth_uri","token_uri","auth_provider_x509_cert_url","client_x509_cert_url"
+    )}
+    creds = Credentials.from_service_account_info(sa, scopes=scopes)
+    service = build("drive", "v3", credentials=creds)
+
+    folder_id = st.secrets["gsheets"]["image_folder_id"]
+
+    media = MediaIoBaseUpload(
+        io.BytesIO(file.read()),
+        mimetype=file.type,
+        resumable=False,
+    )
+
+    file_metadata = {
+        "name": filename,
+        "parents": [folder_id],
+    }
+
+    created = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id, webViewLink"
+    ).execute()
+
+    file_id = created["id"]
+
+    # 「リンクを知っている全員」に閲覧権限付与
+    service.permissions().create(
+        fileId=file_id,
+        body={"role": "reader", "type": "anyone"},
+    ).execute()
+
+    return created["webViewLink"]
+
