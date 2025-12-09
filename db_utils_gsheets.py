@@ -128,8 +128,10 @@ def upload_image_to_drive(file, filename: str) -> str:
     Google Drive にアップロードして、その公開URLを返す
     """
     import io
+    import json
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaIoBaseUpload
+    from googleapiclient.errors import HttpError
 
     scopes = ["https://www.googleapis.com/auth/drive"]
     sa = {k: st.secrets["gsheets"][k] for k in (
@@ -152,19 +154,45 @@ def upload_image_to_drive(file, filename: str) -> str:
         "parents": [folder_id],
     }
 
-    created = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id, webViewLink"
-    ).execute()
+    try:
+        # ① ファイル本体のアップロード
+        created = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, webViewLink"
+        ).execute()
+    except HttpError as e:
+        # ここで Drive からの本当のエラー内容を見てみる
+        status = getattr(e, "resp", None).status if hasattr(e, "resp") else "?"
+        try:
+            content = e.content.decode("utf-8")
+        except Exception:
+            content = str(e)
+
+        st.error(f"Drive へのアップロードでエラーが発生しました (status={status})")
+        st.code(content)
+        raise
 
     file_id = created["id"]
 
-    # 「リンクを知っている全員」に閲覧権限付与
-    service.permissions().create(
-        fileId=file_id,
-        body={"role": "reader", "type": "anyone"},
-    ).execute()
+    # ② 公開権限付与（ここも別途 try/except にしておく）
+    try:
+        service.permissions().create(
+            fileId=file_id,
+            body={"role": "reader", "type": "anyone"},
+        ).execute()
+    except HttpError as e:
+        status = getattr(e, "resp", None).status if hasattr(e, "resp") else "?"
+        try:
+            content = e.content.decode("utf-8")
+        except Exception:
+            content = str(e)
+
+        # ここで失敗しても、とりあえず webViewLink 自体は返しておく
+        st.warning("画像はアップロードされましたが、公開権限の設定でエラーが発生しました。")
+        st.code(f"status={status}\n{content}")
+        # 権限の問題の可能性が高い
 
     return created["webViewLink"]
+
 
