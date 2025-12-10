@@ -123,7 +123,7 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
         "" if size is None else str(size),
         image_url or existing_image_url,
     ]
-    ws.update(f"A{r}:K{r}", [values], value_input_option="USER_ENTERED")
+    ws.update(f"A{r}:L{r}", [values], value_input_option="USER_ENTERED")
 
 def delete_row(row_id: int) -> None:
     ws = _ws()
