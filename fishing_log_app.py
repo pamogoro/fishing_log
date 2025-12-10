@@ -181,20 +181,20 @@ def render_log_table_with_actions(df: pd.DataFrame):
                 from db_utils_gsheets import update_row, upload_image_to_cloudinary
                 time_str = time_e.strftime("%H:%M") if time_e else "00:00"
 
-                # 画像の優先ロジック
-                if image_file is not None:
-                    # 👉 新しい画像で差し替え（削除フラグは無視してOK）
-                    filename = f"{row['id']}_{row['date']}_{image_file.name}"
-                    image_url = upload_image_to_cloudinary(image_file, filename)
-                else:
-                    if delete_image and existing_image_url:
-                        # 👉 画像削除（URLを空にする）
-                        image_url = ""
-                    else:
-                        # 👉 何も変更しない
-                        image_url = existing_image_url
+                # --- 画像URLの決定 ---
+                #   ・何もチェック/アップロードしなければ → 変更なし（image_url は渡さない）
+                #   ・「画像を削除」にチェック         → image_url = ""
+                #   ・新しい画像を選択                 → image_url = 新URL
+                image_url_arg = None  # デフォルトは「変更なし」
 
-                update_row(
+                if delete_image and existing_image_url:
+                    image_url_arg = ""   # 完全削除
+                elif image_file is not None:
+                    filename = f"{row['id']}_{row['date']}_{image_file.name}"
+                    image_url_arg = upload_image_to_cloudinary(image_file, filename)
+
+                # update_row 呼び出し用の kwargs を組み立て
+                kwargs = dict(
                     row_id=int(row["id"]),
                     area=area_e.strip(),
                     tide_type=tide_e,
@@ -205,12 +205,14 @@ def render_log_table_with_actions(df: pd.DataFrame):
                     size=int(size_e),
                     tide_height=float(tide_h_e),
                     time=time_str,
-                    image_url=image_url,
                 )
+                if image_url_arg is not None:
+                    kwargs["image_url"] = image_url_arg
+
+                update_row(**kwargs)
+
                 st.success("更新しました")
                 st.rerun()
-
-
 
             if cancel:
                 st.info("編集をキャンセルしました")

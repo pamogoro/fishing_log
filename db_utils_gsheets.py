@@ -109,6 +109,15 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
     existing_date = ws.cell(r, 2).value or ""
     existing_image_url = ws.cell(r, 12).value or ""
 
+    # ★ ここで意味づけを分ける
+    #   None → 画像は変更しない
+    #   ""   → 画像を削除する
+    #   URL  → 新しいURLに差し替え
+    if image_url is None:
+        final_image_url = existing_image_url
+    else:
+        final_image_url = image_url  # "" なら本当に空で上書き
+
     values = [
         str(row_id),
         existing_date,
@@ -121,7 +130,7 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
         lure or "",
         action or "",
         "" if size is None else str(size),
-        image_url or existing_image_url,
+        final_image_url or existing_image_url,
     ]
     ws.update(f"A{r}:L{r}", [values], value_input_option="USER_ENTERED")
 
