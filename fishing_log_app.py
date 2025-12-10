@@ -146,10 +146,8 @@ def render_log_table_with_actions(df: pd.DataFrame):
                 delete_image = st.checkbox(
                     "この画像を削除する",
                     value=False,
-                    key=f"delete_image_{row['id']}"
+                    key=f"delete_image_{row['id']}_{st.session_state.get('edit_run_id', 0)}"
                 )
-
-
 
             with c1:
                 area_e = st.text_input("エリア", value=str(row["area"] or ""))
@@ -180,6 +178,7 @@ def render_log_table_with_actions(df: pd.DataFrame):
             if do_update:
                 from db_utils_gsheets import update_row, upload_image_to_cloudinary
                 time_str = time_e.strftime("%H:%M") if time_e else "00:00"
+                st.session_state['edit_run_id'] = st.session_state.get('edit_run_id', 0) + 1
 
                 # --- 画像URLの決定 ---
                 #   ・何もチェック/アップロードしなければ → 変更なし（image_url は渡さない）
