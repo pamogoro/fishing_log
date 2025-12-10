@@ -5,3 +5,4 @@ streamlit-plotly-events
 gspread
 google-auth
 google-api-python-client
+cloudinary
