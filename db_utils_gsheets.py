@@ -21,7 +21,7 @@ def _init_cloudinary():
 
 # 列定義（ヘッダ順を固定）
 COLUMNS = ["id","date","time","area","tide_type","tide_height","temperature",
-           "wind_direction","lure","action","size","image_url"]
+           "wind_direction","lure","action","size","image_url1","image_url2","image_url3",]
 SHEET_NAME = "logs"  # シート名は好きに
 
 @st.cache_resource(show_spinner=False)
@@ -69,11 +69,19 @@ def _next_id(df: pd.DataFrame) -> int:
     return int(df["id"].max()) + 1
 
 # 既存のシグネチャに合わせる（fishing_log_app.py の呼び出しを変えない）
-def insert_row(date: str, time: Optional[str], area: str, tide_type: str,
-               tide_height: Optional[float], temperature: Optional[float],
-               wind_direction: Optional[str], lure: Optional[str],
-               action: Optional[str], size: Optional[float],
-               image_url: Optional[str] = None,
+def insert_row(date: str, 
+                time: Optional[str], 
+                area: str, 
+                tide_type: str,
+                tide_height: Optional[float], 
+                temperature: Optional[float],
+                wind_direction: Optional[str], 
+                lure: Optional[str],
+                action: Optional[str], 
+                size: Optional[float],
+                image_url1: Optional[str] = None,
+                image_url2: Optional[str] = None,
+                image_url3: Optional[str] = None,
                ) -> None:
     ws = _ws()
     df = fetch_all()
@@ -90,14 +98,26 @@ def insert_row(date: str, time: Optional[str], area: str, tide_type: str,
         lure or "",
         action or "",
         "" if size is None else str(size),
-        image_url or "",
+        image_url1 or "",
+        image_url2 or "",
+        image_url3 or "",
     ]
     ws.append_row(row, value_input_option="USER_ENTERED")
 
-def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[float],
-               wind_direction: Optional[str], lure: Optional[str], action: Optional[str],
-               size: Optional[float], tide_height: Optional[float], time: Optional[str],
-               image_url: Optional[str] = None) -> None:
+def update_row(row_id: int, 
+                area: str, 
+                tide_type: str, 
+                temperature: Optional[float],
+                wind_direction: Optional[str], 
+                lure: Optional[str], 
+                action: Optional[str],
+                size: Optional[float], 
+                tide_height: Optional[float], 
+                time: Optional[str],
+                image_url1: Optional[str] = None,
+                image_url2: Optional[str] = None,
+                image_url3: Optional[str] = None,
+               ) -> None:
     ws = _ws()
     ids = ws.col_values(1)
     try:
@@ -107,16 +127,22 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
 
     # date は既存を保持（必要なら外から渡すように拡張してOK）
     existing_date = ws.cell(r, 2).value or ""
-    existing_image_url = ws.cell(r, 12).value or ""
+    # 既存のURLを取得（12,13,14列目）
+    existing_image_url1 = ws.cell(r, 12).value or ""
+    existing_image_url2 = ws.cell(r, 13).value or ""
+    existing_image_url3 = ws.cell(r, 14).value or ""
 
-    # ★ ここで意味づけを分ける
-    #   None → 画像は変更しない
-    #   ""   → 画像を削除する
-    #   URL  → 新しいURLに差し替え
-    if image_url is None:
-        final_image_url = existing_image_url
-    else:
-        final_image_url = image_url  # "" なら本当に空で上書き
+    def _resolve(existing: str, new: Optional[str]) -> str:
+        # None → 変更なし
+        # ""   → 削除
+        # URL  → 差し替え
+        if new is None:
+            return existing
+        return new
+
+    final_image_url1 = _resolve(existing_image_url1, image_url1)
+    final_image_url2 = _resolve(existing_image_url2, image_url2)
+    final_image_url3 = _resolve(existing_image_url3, image_url3)
 
     values = [
         str(row_id),
@@ -130,9 +156,11 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
         lure or "",
         action or "",
         "" if size is None else str(size),
-        final_image_url,
+        final_image_url1,
+        final_image_url2,
+        final_image_url3,
     ]
-    ws.update(f"A{r}:L{r}", [values], value_input_option="USER_ENTERED")
+    ws.update(f"A{r}:N{r}", [values], value_input_option="USER_ENTERED")
 
 def delete_row(row_id: int) -> None:
     ws = _ws()

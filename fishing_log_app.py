@@ -91,7 +91,7 @@ def render_log_table_with_actions(df: pd.DataFrame):
 
     # 表示用の列順に戻し、アクション列を付与
     display_cols = ["id","date","time","area","tide_type","tide_height",
-                    "temperature","wind_direction","lure","action","size","image_url"]
+                    "temperature","wind_direction","lure","action","size","image_url1","image_url2","image_url3",]
     d = d[display_cols].reset_index(drop=True)
     d["編集"] = False
     d["削除"] = False
@@ -109,7 +109,9 @@ def render_log_table_with_actions(df: pd.DataFrame):
             "tide_height": st.column_config.NumberColumn("潮位(cm)", format="%.0f"),
             "temperature": st.column_config.NumberColumn("気温(℃)", format="%.1f"),
             "size":        st.column_config.NumberColumn("サイズ(cm)", format="%.0f"),
-            "image_url": st.column_config.LinkColumn("画像", display_text="開く"),  # 表示だけ or 後で非表示にしてもOK
+            "image_url1": st.column_config.LinkColumn("画像1", display_text="1枚目"),
+            "image_url2": st.column_config.LinkColumn("画像2", display_text="2枚目"),
+            "image_url3": st.column_config.LinkColumn("画像3", display_text="3枚目"),
         },
     )
 
@@ -126,33 +128,76 @@ def render_log_table_with_actions(df: pd.DataFrame):
         c1, c2 = st.columns(2)
         with st.form(f"edit_form_{int(row['id'])}"):
             # 既存値→ウィジェット
-            # 日付はそのまま表示（編集対象に含めないなら読み取り専用で）
             st.write(f"ID: {int(row['id'])}　/　日付: {row['date']}")
 
-            # 既存の URL（編集後、画像未選択ならこれを使う）
-            existing_image_url = row.get("image_url", "")
+            # --- 画像まわり（最大3枚） ---
+            existing_image_url1 = row.get("image_url1", "")
+            existing_image_url2 = row.get("image_url2", "")
+            existing_image_url3 = row.get("image_url3", "")
 
-            # 新しい画像選択（任意）
-            image_file = st.file_uploader(
-                "釣果写真（変更する場合のみアップロード）",
-                type=["jpg", "jpeg", "png"],
-                key=f"edit_image_{row['id']}"
-            )
+            # 新しい画像アップロード（各スロットごと）
+            st.markdown("##### 📸 画像")
+            c_img1, c_img2, c_img3 = st.columns(3)
 
-            # 既存の写真がある場合はプレビュー表示
-            delete_image = False
-            if existing_image_url:
-                st.image(existing_image_url, caption="現在の画像", use_column_width=True)
-                delete_image = st.checkbox(
-                    "この画像を削除する",
-                    value=False,
-                    key=f"delete_image_{row['id']}_{st.session_state.get('edit_run_id', 0)}"
+            with c_img1:
+                st.caption("画像1")
+                image_file1 = st.file_uploader(
+                    "変更する場合のみ",
+                    type=["jpg", "jpeg", "png"],
+                    key=f"edit_image1_{row['id']}",
                 )
+                delete_image1 = False
+                if existing_image_url1:
+                    st.image(existing_image_url1, caption="現在の画像1", use_column_width=True)
+                    delete_image1 = st.checkbox(
+                        "この画像1を削除する",
+                        value=False,
+                        key=f"delete_image1_{row['id']}",
+                    )
 
+            with c_img2:
+                st.caption("画像2")
+                image_file2 = st.file_uploader(
+                    "変更する場合のみ",
+                    type=["jpg", "jpeg", "png"],
+                    key=f"edit_image2_{row['id']}",
+                )
+                delete_image2 = False
+                if existing_image_url2:
+                    st.image(existing_image_url2, caption="現在の画像2", use_column_width=True)
+                    delete_image2 = st.checkbox(
+                        "この画像2を削除する",
+                        value=False,
+                        key=f"delete_image2_{row['id']}",
+                    )
+
+            with c_img3:
+                st.caption("画像3")
+                image_file3 = st.file_uploader(
+                    "変更する場合のみ",
+                    type=["jpg", "jpeg", "png"],
+                    key=f"edit_image3_{row['id']}",
+                )
+                delete_image3 = False
+                if existing_image_url3:
+                    st.image(existing_image_url3, caption="現在の画像3", use_column_width=True)
+                    delete_image3 = st.checkbox(
+                        "この画像3を削除する",
+                        value=False,
+                        key=f"delete_image3_{row['id']}",
+                    )
+
+            # --- テキスト系の編集項目 ---
+            c1, c2 = st.columns(2)
             with c1:
                 area_e = st.text_input("エリア", value=str(row["area"] or ""))
-                tide_e = st.selectbox("潮回り", ["大潮","中潮","小潮","若潮","長潮"],
-                                      index=["大潮","中潮","小潮","若潮","長潮"].index(str(row["tide_type"])) if str(row["tide_type"]) in ["大潮","中潮","小潮","若潮","長潮"] else 1)
+                tide_e = st.selectbox(
+                    "潮回り",
+                    ["大潮", "中潮", "小潮", "若潮", "長潮"],
+                    index=["大潮", "中潮", "小潮", "若潮", "長潮"].index(str(row["tide_type"]))
+                    if str(row["tide_type"]) in ["大潮", "中潮", "小潮", "若潮", "長潮"]
+                    else 1,
+                )
 
                 # 時間：文字列 "HH:MM" → time型
                 def_time = None
@@ -164,33 +209,61 @@ def render_log_table_with_actions(df: pd.DataFrame):
                 time_e = st.time_input("時間", value=def_time, key=f"time_e_{int(row['id'])}")
 
             with c2:
-                temp_e = st.number_input("気温(℃)", value=float(row["temperature"]) if pd.notna(row["temperature"]) else 0.0, step=0.1, format="%.1f")
-                tide_h_e = st.number_input("潮位(cm)", value=float(row["tide_height"]) if pd.notna(row["tide_height"]) else 0.0, step=1.0)
+                temp_e = st.number_input(
+                    "気温(℃)",
+                    value=float(row["temperature"]) if pd.notna(row["temperature"]) else 0.0,
+                    step=0.1,
+                    format="%.1f",
+                )
+                tide_h_e = st.number_input(
+                    "潮位(cm)",
+                    value=float(row["tide_height"]) if pd.notna(row["tide_height"]) else 0.0,
+                    step=1.0,
+                )
                 wind_e = st.text_input("風向", value=str(row["wind_direction"] or ""))
                 lure_e = st.text_input("ルアー", value=str(row["lure"] or ""))
-                act_e  = st.text_input("アクション", value=str(row["action"] or ""))
-                size_e = st.number_input("サイズ(cm)", value=int(row["size"]) if pd.notna(row["size"]) else 0, step=1, min_value=0)
+                act_e = st.text_input("アクション", value=str(row["action"] or ""))
+                size_e = st.number_input(
+                    "サイズ(cm)",
+                    value=int(row["size"]) if pd.notna(row["size"]) else 0,
+                    step=1,
+                    min_value=0,
+                )
 
-            col_upd, col_cancel = st.columns([1,1])
+            col_upd, col_cancel = st.columns([1, 1])
             do_update = col_upd.form_submit_button("更新")
             cancel = col_cancel.form_submit_button("キャンセル")
 
             if do_update:
                 from db_utils_gsheets import update_row, upload_image_to_cloudinary
+
                 time_str = time_e.strftime("%H:%M") if time_e else "00:00"
-                st.session_state['edit_run_id'] = st.session_state.get('edit_run_id', 0) + 1
 
-                # --- 画像URLの決定 ---
-                #   ・何もチェック/アップロードしなければ → 変更なし（image_url は渡さない）
-                #   ・「画像を削除」にチェック         → image_url = ""
-                #   ・新しい画像を選択                 → image_url = 新URL
-                image_url_arg = None  # デフォルトは「変更なし」
+                # --- 画像URLの決定（スロット1〜3） ---
+                image_url1_arg = None
+                image_url2_arg = None
+                image_url3_arg = None
 
-                if delete_image and existing_image_url:
-                    image_url_arg = ""   # 完全削除
-                elif image_file is not None:
-                    filename = f"{row['id']}_{row['date']}_{image_file.name}"
-                    image_url_arg = upload_image_to_cloudinary(image_file, filename)
+                # 画像1
+                if delete_image1 and existing_image_url1:
+                    image_url1_arg = ""  # 削除
+                elif image_file1 is not None:
+                    filename1 = f"{row['id']}_{row['date']}_1_{image_file1.name}"
+                    image_url1_arg = upload_image_to_cloudinary(image_file1, filename1)
+
+                # 画像2
+                if delete_image2 and existing_image_url2:
+                    image_url2_arg = ""  # 削除
+                elif image_file2 is not None:
+                    filename2 = f"{row['id']}_{row['date']}_2_{image_file2.name}"
+                    image_url2_arg = upload_image_to_cloudinary(image_file2, filename2)
+
+                # 画像3
+                if delete_image3 and existing_image_url3:
+                    image_url3_arg = ""  # 削除
+                elif image_file3 is not None:
+                    filename3 = f"{row['id']}_{row['date']}_3_{image_file3.name}"
+                    image_url3_arg = upload_image_to_cloudinary(image_file3, filename3)
 
                 # update_row 呼び出し用の kwargs を組み立て
                 kwargs = dict(
@@ -205,8 +278,14 @@ def render_log_table_with_actions(df: pd.DataFrame):
                     tide_height=float(tide_h_e),
                     time=time_str,
                 )
-                if image_url_arg is not None:
-                    kwargs["image_url"] = image_url_arg
+
+                # 画像は「変更があったスロットだけ」渡す
+                if image_url1_arg is not None:
+                    kwargs["image_url1"] = image_url1_arg
+                if image_url2_arg is not None:
+                    kwargs["image_url2"] = image_url2_arg
+                if image_url3_arg is not None:
+                    kwargs["image_url3"] = image_url3_arg
 
                 update_row(**kwargs)
 
@@ -266,23 +345,33 @@ with tab1:
             lure = st.text_input("ルアー（例：バクリースピン6）")
             action = st.text_input("アクション（例：スローリトリーブ）")
 
-        # 🔽 ここ追加：1登録につき1枚の写真
-        image_file = st.file_uploader(
-            "釣果写真（1枚まで）",
-            type=["jpg", "jpeg", "png"]
+        image_files = st.file_uploader(
+            "釣果写真（最大3枚まで）",
+            type=["jpg", "jpeg", "png"],
+            accept_multiple_files=True,
         )
+
 
         # time は st.time_input(...) の戻り値（datetime.time or None）
         time_str = time.strftime("%H:%M") if time else "00:00"
 
         submitted = st.form_submit_button("登録")
         if submitted:
-            image_url = None
-            if image_file is not None:
+            image_url1 = image_url2 = image_url3 = None
+
+            if image_files:
                 from db_utils_gsheets import upload_image_to_cloudinary
-                filename = f"{date.strftime('%Y%m%d')}_{area}_{image_file.name}"
-                image_url = upload_image_to_cloudinary(image_file, filename)
-            
+                urls = []
+                for i, f in enumerate(image_files[:3]):  # 最大3枚
+                    filename = f"{date.strftime('%Y%m%d')}_{area}_{i+1}_{f.name}"
+                    url = upload_image_to_cloudinary(f, filename)
+                    urls.append(url)
+
+                # 足りない分は None のまま
+                if len(urls) > 0: image_url1 = urls[0]
+                if len(urls) > 1: image_url2 = urls[1]
+                if len(urls) > 2: image_url3 = urls[2]
+
             insert_row(
                 date.strftime("%Y-%m-%d"),
                 time_str,
@@ -294,10 +383,13 @@ with tab1:
                 lure.strip(),
                 action.strip(),
                 float(size) if size is not None else None,
-                image_url,
+                image_url1,
+                image_url2,
+                image_url3,
             )
             st.success("✅ 登録が完了しました")
             st.rerun()
+
 
     st.divider()
     st.subheader("登録済みデータ")
