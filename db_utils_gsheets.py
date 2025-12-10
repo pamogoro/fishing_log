@@ -130,7 +130,7 @@ def update_row(row_id: int, area: str, tide_type: str, temperature: Optional[flo
         lure or "",
         action or "",
         "" if size is None else str(size),
-        final_image_url or existing_image_url,
+        final_image_url,
     ]
     ws.update(f"A{r}:L{r}", [values], value_input_option="USER_ENTERED")
 
