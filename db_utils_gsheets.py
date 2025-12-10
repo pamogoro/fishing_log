@@ -158,3 +158,23 @@ def upload_image_to_drive(file, filename: str) -> str:
 
     # HTTPS の URL
     return result["secure_url"]
+
+def upload_image_to_cloudinary(file, filename: str) -> str:
+    """
+    Streamlit の file_uploader で受け取った file を
+    Cloudinary にアップロードして、その公開URLを返す
+    """
+    _init_cloudinary()
+
+    import os
+    name, ext = os.path.splitext(filename)
+    public_id = f"fishing_log/{name}"
+
+    result = cloudinary.uploader.upload(
+        file,
+        public_id=public_id,
+        overwrite=True,
+        resource_type="image",
+    )
+
+    return result["secure_url"]

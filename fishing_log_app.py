@@ -171,13 +171,13 @@ def render_log_table_with_actions(df: pd.DataFrame):
             cancel = col_cancel.form_submit_button("キャンセル")
 
             if do_update:
-                from db_utils_gsheets import update_row, upload_image_to_drive
+                from db_utils_gsheets import update_row, upload_image_to_cloudinary
                 time_str = time_e.strftime("%H:%M") if time_e else "00:00"
 
                 # ここで初めて image_url を決める
                 if image_file is not None:
                     filename = f"{row['id']}_{row['date']}_{image_file.name}"
-                    image_url = upload_image_to_drive(image_file, filename)
+                    image_url = upload_image_to_cloudinary(image_file, filename)
                 else:
                     image_url = existing_image_url
 
@@ -264,9 +264,9 @@ with tab1:
         if submitted:
             image_url = None
             if image_file is not None:
-                from db_utils_gsheets import upload_image_to_drive
+                from db_utils_gsheets import upload_image_to_cloudinary
                 filename = f"{date.strftime('%Y%m%d')}_{area}_{image_file.name}"
-                image_url = upload_image_to_drive(image_file, filename)
+                image_url = upload_image_to_cloudinary(image_file, filename)
             
             insert_row(
                 date.strftime("%Y-%m-%d"),
