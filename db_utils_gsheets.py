@@ -50,11 +50,26 @@ def _ws():
 def _to_df(rows: list[list[str]]) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=COLUMNS)
-    df = pd.DataFrame(rows, columns=COLUMNS)
+
+    normalized_rows: list[list[str]] = []
+    col_count = len(COLUMNS)
+
+    for r in rows:
+        # 行の列数が少ない → 足りない分を "" で埋める
+        if len(r) < col_count:
+            r = r + [""] * (col_count - len(r))
+        # 多い場合（将来レイアウトを変えたとき用）は切り捨て
+        elif len(r) > col_count:
+            r = r[:col_count]
+        normalized_rows.append(r)
+
+    df = pd.DataFrame(normalized_rows, columns=COLUMNS)
+
     df["id"] = pd.to_numeric(df["id"], errors="coerce").astype("Int64")
-    for col in ["tide_height","temperature","size"]:
+    for col in ["tide_height", "temperature", "size"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
+
 
 def fetch_all() -> pd.DataFrame:
     ws = _ws()
