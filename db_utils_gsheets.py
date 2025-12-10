@@ -4,6 +4,20 @@ from google.oauth2.service_account import Credentials
 import streamlit as st
 import pandas as pd
 from typing import Optional
+import cloudinary
+import cloudinary.uploader
+
+@st.cache_resource(show_spinner=False)
+def _init_cloudinary():
+    cfg = st.secrets["cloudinary"]
+    cloudinary.config(
+        cloud_name = cfg["cloud_name"],
+        api_key    = cfg["api_key"],
+        api_secret = cfg["api_secret"],
+        secure     = True,
+    )
+    return True
+
 
 # 列定義（ヘッダ順を固定）
 COLUMNS = ["id","date","time","area","tide_type","tide_height","temperature",
@@ -125,74 +139,22 @@ def delete_row(row_id: int) -> None:
 def upload_image_to_drive(file, filename: str) -> str:
     """
     Streamlit の file_uploader で受け取った file を
-    Google Drive にアップロードして、その公開URLを返す
+    Cloudinary にアップロードして、その公開URLを返す
     """
-    import io
-    import json
-    from googleapiclient.discovery import build
-    from googleapiclient.http import MediaIoBaseUpload
-    from googleapiclient.errors import HttpError
+    _init_cloudinary()
 
-    scopes = ["https://www.googleapis.com/auth/drive"]
-    sa = {k: st.secrets["gsheets"][k] for k in (
-        "type","project_id","private_key_id","private_key","client_email","client_id",
-        "auth_uri","token_uri","auth_provider_x509_cert_url","client_x509_cert_url"
-    )}
-    creds = Credentials.from_service_account_info(sa, scopes=scopes)
-    service = build("drive", "v3", credentials=creds)
+    # public_id 用に拡張子抜いたり、フォルダ分けしたり
+    import os
+    name, ext = os.path.splitext(filename)
+    public_id = f"fishing_log/{name}"
 
-    folder_id = st.secrets["gsheets"]["image_folder_id"]
-
-    media = MediaIoBaseUpload(
-        io.BytesIO(file.read()),
-        mimetype=file.type,
-        resumable=False,
+    # Streamlit の UploadedFile はそのまま file-like として渡せる
+    result = cloudinary.uploader.upload(
+        file,
+        public_id=public_id,
+        overwrite=True,
+        resource_type="image",
     )
 
-    file_metadata = {
-        "name": filename,
-        "parents": [folder_id],
-    }
-
-    try:
-        # ① ファイル本体のアップロード
-        created = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields="id, webViewLink"
-        ).execute()
-    except HttpError as e:
-        # ここで Drive からの本当のエラー内容を見てみる
-        status = getattr(e, "resp", None).status if hasattr(e, "resp") else "?"
-        try:
-            content = e.content.decode("utf-8")
-        except Exception:
-            content = str(e)
-
-        st.error(f"Drive へのアップロードでエラーが発生しました (status={status})")
-        st.code(content)
-        raise
-
-    file_id = created["id"]
-
-    # ② 公開権限付与（ここも別途 try/except にしておく）
-    try:
-        service.permissions().create(
-            fileId=file_id,
-            body={"role": "reader", "type": "anyone"},
-        ).execute()
-    except HttpError as e:
-        status = getattr(e, "resp", None).status if hasattr(e, "resp") else "?"
-        try:
-            content = e.content.decode("utf-8")
-        except Exception:
-            content = str(e)
-
-        # ここで失敗しても、とりあえず webViewLink 自体は返しておく
-        st.warning("画像はアップロードされましたが、公開権限の設定でエラーが発生しました。")
-        st.code(f"status={status}\n{content}")
-        # 権限の問題の可能性が高い
-
-    return created["webViewLink"]
-
-
+    # HTTPS の URL
+    return result["secure_url"]
