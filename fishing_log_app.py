@@ -109,7 +109,7 @@ def render_log_table_with_actions(df: pd.DataFrame):
             "tide_height": st.column_config.NumberColumn("潮位(cm)", format="%.0f"),
             "temperature": st.column_config.NumberColumn("気温(℃)", format="%.1f"),
             "size":        st.column_config.NumberColumn("サイズ(cm)", format="%.0f"),
-        "image_url": st.column_config.TextColumn("画像URL", disabled=True, width="small"),  # 表示だけ or 後で非表示にしてもOK
+            "image_url": st.column_config.LinkColumn("画像", display_text="開く"),  # 表示だけ or 後で非表示にしてもOK
         },
     )
 
@@ -140,8 +140,15 @@ def render_log_table_with_actions(df: pd.DataFrame):
             )
 
             # 既存の写真がある場合はプレビュー表示
+            delete_image = False
             if existing_image_url:
                 st.image(existing_image_url, caption="現在の画像", use_column_width=True)
+                delete_image = st.checkbox(
+                    "この画像を削除する",
+                    value=False,
+                    key=f"delete_image_{row['id']}"
+                )
+
 
 
             with c1:
@@ -174,12 +181,18 @@ def render_log_table_with_actions(df: pd.DataFrame):
                 from db_utils_gsheets import update_row, upload_image_to_cloudinary
                 time_str = time_e.strftime("%H:%M") if time_e else "00:00"
 
-                # ここで初めて image_url を決める
+                # 画像の優先ロジック
                 if image_file is not None:
+                    # 👉 新しい画像で差し替え（削除フラグは無視してOK）
                     filename = f"{row['id']}_{row['date']}_{image_file.name}"
                     image_url = upload_image_to_cloudinary(image_file, filename)
                 else:
-                    image_url = existing_image_url
+                    if delete_image and existing_image_url:
+                        # 👉 画像削除（URLを空にする）
+                        image_url = ""
+                    else:
+                        # 👉 何も変更しない
+                        image_url = existing_image_url
 
                 update_row(
                     row_id=int(row["id"]),
@@ -196,6 +209,7 @@ def render_log_table_with_actions(df: pd.DataFrame):
                 )
                 st.success("更新しました")
                 st.rerun()
+
 
 
             if cancel:
