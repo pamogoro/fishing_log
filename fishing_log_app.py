@@ -22,6 +22,35 @@ TIDE736_PORTS = {
     "石巻": {"pc": 4, "hc": 6},
 }
 
+# 東京湾（湾奥）の代表点（値はあとで好きな座標に調整してOK）
+TOKYO_BAY_SST_POINT = {
+    "lat": 35.6,
+    "lon": 139.9,
+}
+
+@st.cache_data(ttl=1800, show_spinner=False)  # 30分キャッシュ
+def fetch_current_sea_surface_temp(lat: float, lon: float) -> float | None:
+    """
+    Open-Meteo Marine API から現在の海面水温（℃）を取得
+    """
+    url = "https://marine-api.open-meteo.com/v1/marine"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "sea_surface_temperature",
+        "timezone": "Asia/Tokyo",
+        "cell_selection": "sea",
+    }
+    resp = requests.get(url, params=params, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+
+    current = data.get("current", {})
+    sst = current.get("sea_surface_temperature")
+    if sst is None:
+        return None
+    return float(sst)
+
 @st.cache_data(show_spinner=False)
 def fetch_tide736_day(pc: int, hc: int, target_date: Date):
     """
@@ -453,6 +482,22 @@ with tab1:
     # st.image("https://api.tide736.net/tide_image.php?pc=28&hc=9&yr=2025&mn=12&dy=11&rg=day&w=768&h=512&lc=blue&gcs=cyan&gcf=blue&ld=on&ttd=on&tsmd=on")
     st.caption("※データ元：tide736.net（日本沿岸736港の潮汐表）")
     st.divider()
+
+    # ▼ タイドグラフのちょい下あたりで表示するイメージ
+    st.subheader("現在の東京湾の水温（推定）")
+
+    try:
+        sst = fetch_current_sea_surface_temp(
+            TOKYO_BAY_SST_POINT["lat"],
+            TOKYO_BAY_SST_POINT["lon"],
+        )
+        if sst is not None:
+            st.metric("海面水温（東京湾・モデル推定）", f"{sst:.1f} ℃")
+        else:
+            st.info("現在の水温データを取得できませんでした。")
+    except Exception as e:
+        st.warning(f"水温の取得に失敗しました: {e}")
+
 
     # ---------- 新規登録フォーム ----------
     st.caption("📝 新しい釣行データを入力してください")
