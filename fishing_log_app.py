@@ -7,6 +7,7 @@ from analysis_tab import show_analysis
 from db_utils_gsheets import fetch_all, insert_row, update_row, delete_row
 import urllib.parse
 from datetime import datetime, date as Date
+import requests  # ← 追加
 
 # fishing_log_app.py の上の方に追加
 TIDE736_PORTS = {
@@ -20,6 +21,55 @@ TIDE736_PORTS = {
     "気仙沼": {"pc": 4, "hc": 1},
     "石巻": {"pc": 4, "hc": 6},
 }
+
+@st.cache_data(show_spinner=False)
+def fetch_tide736_day(pc: int, hc: int, target_date: Date):
+    """
+    指定した港(pc/hc)・日付の 1日分の潮位データを tide736 から取得する
+    """
+    params = {
+        "pc": pc,
+        "hc": hc,
+        "yr": target_date.year,
+        "mn": target_date.month,
+        "dy": target_date.day,
+        "rg": "day",
+    }
+    resp = requests.get("https://api.tide736.net/get_tide.php", params=params, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+
+    if data.get("status") != 1:
+        raise ValueError(f"tide736 API error: {data.get('message')}")
+
+    key = target_date.strftime("%Y-%m-%d")
+    chart = data["tide"]["chart"][key]
+    tide_list = chart["tide"]  # [{time: "HH:MM", cm: float, ...}, ...]
+    return tide_list
+
+
+def get_tide_height_for_time(pc: int, hc: int, target_date: Date, t: datetime.time):
+    """
+    指定日時に一番近い tide データを拾って (cm, データ側の時刻文字列) を返す
+    """
+    tide_list = fetch_tide736_day(pc, hc, target_date)
+
+    target_min = t.hour * 60 + t.minute
+    best = None
+    best_diff = 10**9
+
+    for item in tide_list:
+        hh, mm = map(int, item["time"].split(":"))
+        m = hh * 60 + mm
+        diff = abs(m - target_min)
+        if diff < best_diff:
+            best_diff = diff
+            best = item
+
+    if best is None:
+        raise ValueError("tide data not found")
+
+    return float(best["cm"]), best["time"]  # (潮位cm, 何時のデータか)
 
 def build_tide736_image_url(
     target_date: Date,
@@ -418,7 +468,12 @@ with tab1:
             size = st.number_input("サイズ (cm)", step=1, min_value=0)
         with c2:
             tide_type = st.selectbox("潮回り", ["大潮", "中潮", "小潮", "若潮", "長潮"])
-            tide_height = st.number_input("潮位 (cm)", step=1, min_value=0)  # ← 追加
+            tide_height = st.number_input(
+                "潮位 (cm)",
+                step=1,
+                min_value=0,
+                key="log_tide_height",  # ← ここだけ追加
+            )
             wind_direction = st.text_input("風向（例：北北東）")
             lure = st.text_input("ルアー（例：バクリースピン6）")
             action = st.text_input("アクション（例：スローリトリーブ）")
@@ -429,11 +484,33 @@ with tab1:
             accept_multiple_files=True,
         )
 
+        # ボタンを2つ並べる
+        btn_col1, btn_col2 = st.columns(2)
+        reflect_tide = btn_col1.form_submit_button("潮位を反映")
+        submitted    = btn_col2.form_submit_button("登録")
 
         # time は st.time_input(...) の戻り値（datetime.time or None）
         time_str = time.strftime("%H:%M") if time else "00:00"
 
-        submitted = st.form_submit_button("登録")
+        # ① 「潮位を反映」が押されたとき：APIを叩いて潮位欄を更新するだけ
+        if reflect_tide:
+            if not time:
+                st.warning("先に時間を入力してください")
+            else:
+                try:
+                    spot = TIDE736_PORTS[spot_name]  # 上のタイドグラフで選んだ港をそのまま使う
+                    cm, base_time = get_tide_height_for_time(
+                        spot["pc"],
+                        spot["hc"],
+                        tide_date,   # タイドグラフで選んだ日付
+                        time,
+                    )
+                    st.session_state["log_tide_height"] = int(round(cm))
+                    st.success(f"{base_time} の潮位 {cm:.1f} cm を反映しました")
+                except Exception as e:
+                    st.error(f"潮位の取得に失敗しました: {e}")
+
+        # submitted = st.form_submit_button("登録")
         if submitted:
             image_url1 = image_url2 = image_url3 = None
 
