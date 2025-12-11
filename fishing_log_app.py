@@ -396,7 +396,7 @@ with tab1:
         pc=spot["pc"],
         hc=spot["hc"],
         width=768,
-        height=320,
+        height=512,
     )
 
     st.write("DEBUG tide URL:", tide_img_url)  # ← これ追加
