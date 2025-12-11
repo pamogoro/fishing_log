@@ -28,7 +28,7 @@ def build_tide736_image_url(
     width: int = 768,
     height: int = 320,
 ) -> str:
-    base = "https://api.tide736.net/get_tide.php"
+    base = "https://api.tide736.net/tide_image.php"
     params = {
         "pc": pc,
         "hc": hc,
@@ -36,15 +36,15 @@ def build_tide736_image_url(
         "mn": target_date.month,
         "dy": target_date.day,
         "rg": "day",      # 1日分
-        # "w": width,
-        # "h": height,
-        # # 以下は見た目系のオプション（お好みで）
-        # "lc": "blue",     # 線の色 (line color)
-        # "gcs": "cyan",    # グラデーション start
-        # "gcf": "blue",    # グラデーション finish
-        # "ld": "on",       # 凡例 on/off
-        # "ttd": "on",      # 潮位テーブル表示 on/off
-        # "tsmd": "on",     # 太陽・月情報テーブル on/off
+        "w": width,
+        "h": height,
+        # 以下は見た目系のオプション（お好みで）
+        "lc": "blue",     # 線の色 (line color)
+        "gcs": "cyan",    # グラデーション start
+        "gcf": "blue",    # グラデーション finish
+        "ld": "on",       # 凡例 on/off
+        "ttd": "on",      # 潮位テーブル表示 on/off
+        "tsmd": "on",     # 太陽・月情報テーブル on/off
     }
     return base + "?" + urllib.parse.urlencode(params)
 
@@ -374,8 +374,6 @@ with tab1:
 
     # ==== ここからタイドグラフ ====
     st.subheader("🌊 指定日のタイドグラフ")
-
-    from datetime import datetime
 
     c1, c2 = st.columns(2)
     with c1:
