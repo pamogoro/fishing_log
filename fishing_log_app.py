@@ -498,6 +498,7 @@ with tab1:
     except Exception as e:
         st.warning(f"水温の取得に失敗しました: {e}")
 
+    st.divider()
 
     # ---------- 新規登録フォーム ----------
     st.caption("📝 新しい釣行データを入力してください")
