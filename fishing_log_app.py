@@ -22,10 +22,17 @@ TIDE736_PORTS = {
     "石巻": {"pc": 4, "hc": 6},
 }
 
-# 東京湾（湾奥）の代表点（値はあとで好きな座標に調整してOK）
-TOKYO_BAY_SST_POINT = {
-    "lat": 35.6,
-    "lon": 139.9,
+# ▼ 港ごとの「水温参照ポイント」（ざっくりの座標）
+SST_POINTS = {
+    "芝浦":  {"lat": 35.640, "lon": 139.763},
+    "羽田":  {"lat": 35.545, "lon": 139.781},
+    "銚子":  {"lat": 35.700, "lon": 140.850},
+    "鴨川":  {"lat": 35.100, "lon": 140.100},
+    "岩井袋": {"lat": 35.070, "lon": 139.820},
+    "横須賀": {"lat": 35.280, "lon": 139.670},
+    "江の島": {"lat": 35.300, "lon": 139.480},
+    "気仙沼": {"lat": 38.900, "lon": 141.570},
+    "石巻":  {"lat": 38.430, "lon": 141.300},
 }
 
 @st.cache_data(ttl=1800, show_spinner=False)  # 30分キャッシュ
@@ -483,20 +490,24 @@ with tab1:
     st.caption("※データ元：tide736.net（日本沿岸736港の潮汐表）")
     st.divider()
 
-    # ▼ タイドグラフのちょい下あたりで表示するイメージ
-    st.subheader("現在の東京湾の水温（推定）")
+    # ▼ ここから水温表示ブロックを追加 ▼
+    st.subheader("現在の水温（海面・推定値）")
+
+    # 選択中の港に対応する座標を取得（なければデフォルトにフォールバック）
+    sst_point = SST_POINTS.get(spot_name, {"lat": 35.6, "lon": 139.9})
 
     try:
         sst = fetch_current_sea_surface_temp(
-            TOKYO_BAY_SST_POINT["lat"],
-            TOKYO_BAY_SST_POINT["lon"],
+            sst_point["lat"],
+            sst_point["lon"],
         )
         if sst is not None:
-            st.metric("海面水温（東京湾・モデル推定）", f"{sst:.1f} ℃")
+            st.metric(f"{spot_name} 付近の海面水温", f"{sst:.1f} ℃")
         else:
             st.info("現在の水温データを取得できませんでした。")
     except Exception as e:
         st.warning(f"水温の取得に失敗しました: {e}")
+    # ▲ 水温ブロックここまで ▲
 
     st.divider()
 
