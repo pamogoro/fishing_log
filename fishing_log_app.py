@@ -458,6 +458,10 @@ with tab1:
     st.caption("📝 新しい釣行データを入力してください")
     st.subheader("釣行データ新規入力")
 
+    # 潮位の初期値（session_state）を用意
+    if "log_tide_height" not in st.session_state:
+        st.session_state["log_tide_height"] = 0
+
     with st.form("log_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
         with c1:
@@ -472,7 +476,7 @@ with tab1:
                 "潮位 (cm)",
                 step=1,
                 min_value=0,
-                key="log_tide_height",  # ← ここだけ追加
+                value=int(st.session_state.get("log_tide_height", 0)),  # ★ ここで初期値だけ使う
             )
             wind_direction = st.text_input("風向（例：北北東）")
             lure = st.text_input("ルアー（例：バクリースピン6）")
@@ -502,7 +506,7 @@ with tab1:
                     cm, base_time = get_tide_height_for_time(
                         spot["pc"],
                         spot["hc"],
-                        date,   # タイドグラフで選んだ日付
+                        date,   # 釣果入力で選んだ日付
                         time,
                     )
                     st.session_state["log_tide_height"] = int(round(cm))
@@ -528,7 +532,7 @@ with tab1:
                 if len(urls) > 2: image_url3 = urls[2]
             
             # tide_height は session_state から取る
-            tide_height_val = float(st.session_state.get("log_tide_height", 0))
+            tide_height_val = float(tide_height)
 
             insert_row(
                 date.strftime("%Y-%m-%d"),
