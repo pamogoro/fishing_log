@@ -399,8 +399,9 @@ with tab1:
         height=320,
     )
 
+    st.write("DEBUG tide URL:", tide_img_url)  # ← これ追加
     st.image(tide_img_url, use_column_width=True)
-    st.image("https://api.tide736.net/tide_image.php?pc=28&hc=9&yr=2025&mn=12&dy=11&rg=day&w=768&h=512&lc=blue&gcs=cyan&gcf=blue&ld=on&ttd=on&tsmd=on")
+    # st.image("https://api.tide736.net/tide_image.php?pc=28&hc=9&yr=2025&mn=12&dy=11&rg=day&w=768&h=512&lc=blue&gcs=cyan&gcf=blue&ld=on&ttd=on&tsmd=on")
     st.caption("※データ元：tide736.net（日本沿岸736港の潮汐表）")
     st.divider()
 
