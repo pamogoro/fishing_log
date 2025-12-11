@@ -526,13 +526,16 @@ with tab1:
                 if len(urls) > 0: image_url1 = urls[0]
                 if len(urls) > 1: image_url2 = urls[1]
                 if len(urls) > 2: image_url3 = urls[2]
+            
+            # tide_height は session_state から取る
+            tide_height_val = float(st.session_state.get("log_tide_height", 0))
 
             insert_row(
                 date.strftime("%Y-%m-%d"),
                 time_str,
                 area.strip(),
                 tide_type,
-                float(tide_height) if tide_height is not None else None,
+                tide_height_val,
                 float(temperature) if temperature is not None else None,
                 wind_direction.strip(),
                 lure.strip(),
