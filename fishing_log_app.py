@@ -5,6 +5,49 @@ import pandas as pd
 import streamlit as st
 from analysis_tab import show_analysis
 from db_utils_gsheets import fetch_all, insert_row, update_row, delete_row
+import urllib.parse
+from datetime import datetime, date as Date
+
+# fishing_log_app.py の上の方に追加
+TIDE736_PORTS = {
+    "芝浦": {"pc": 13, "hc": 2},
+    "羽田": {"pc": 13, "hc": 3},
+    "銚子": {"pc": 12, "hc": 2},
+    "鴨川": {"pc": 12, "hc": 6},
+    "岩井袋": {"pc": 12, "hc": 10},
+    "横須賀": {"pc": 14, "hc": 7},
+    "江の島": {"pc": 14, "hc": 19},
+    "気仙沼": {"pc": 4, "hc": 1},
+    "石巻": {"pc": 4, "hc": 6},
+}
+
+def build_tide736_image_url(
+    target_date: Date,
+    pc: int,
+    hc: int,
+    width: int = 768,
+    height: int = 320,
+) -> str:
+    base = "https://api.tide736.net/tide_image.php"
+    params = {
+        "pc": pc,
+        "hc": hc,
+        "yr": target_date.year,
+        "mn": target_date.month,
+        "dy": target_date.day,
+        "rg": "day",      # 1日分
+        "w": width,
+        "h": height,
+        # 以下は見た目系のオプション（お好みで）
+        "lc": "blue",     # 線の色 (line color)
+        "gcs": "cyan",    # グラデーション start
+        "gcf": "blue",    # グラデーション finish
+        "ld": "on",       # 凡例 on/off
+        "ttd": "on",      # 潮位テーブル表示 on/off
+        "tsmd": "on",     # 太陽・月情報テーブル on/off
+    }
+    return base + "?" + urllib.parse.urlencode(params)
+
 
 def _coerce_types_for_sort(df: pd.DataFrame) -> pd.DataFrame:
     d = df.copy()
@@ -328,6 +371,39 @@ with tab1:
 
     st.divider()
     st.caption("📝 新しい釣行データを入力してください")
+
+    # ==== ここからタイドグラフ ====
+    st.subheader("🌊 指定日のタイドグラフ")
+
+    from datetime import datetime
+
+    c1, c2 = st.columns(2)
+    with c1:
+        tide_date = st.date_input(
+            "潮位を確認する日",
+            value=datetime.now().date(),
+            key="tide736_date",
+        )
+    with c2:
+        spot_name = st.selectbox(
+            "港（tide736の基準地点）",
+            options=list(TIDE736_PORTS.keys()),
+            index=0,
+            key="tide736_spot",
+        )
+
+    spot = TIDE736_PORTS[spot_name]
+    tide_img_url = build_tide736_image_url(
+        target_date=tide_date,
+        pc=spot["pc"],
+        hc=spot["hc"],
+        width=768,
+        height=320,
+    )
+
+    st.image(tide_img_url, use_column_width=True)
+    st.caption("※データ元：tide736.net（日本沿岸736港の潮汐表）")
+    st.divider()
 
     # ---------- 新規登録フォーム ----------
     with st.form("log_form", clear_on_submit=True):
