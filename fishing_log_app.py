@@ -502,7 +502,7 @@ with tab1:
                     cm, base_time = get_tide_height_for_time(
                         spot["pc"],
                         spot["hc"],
-                        tide_date,   # タイドグラフで選んだ日付
+                        date,   # タイドグラフで選んだ日付
                         time,
                     )
                     st.session_state["log_tide_height"] = int(round(cm))
