@@ -80,10 +80,11 @@ def _render_one_blog_card(row: pd.Series, show_images: bool = True):
             st.write(f"🪝 ルアー：{row.get('lure') or '—'}")
             st.write(f"🎮 アクション：{row.get('action') or '—'}")
 
-        # （任意）メモ欄や、今後「編集へ」導線を置くとさらに便利
-        if st.button("このレコードを編集", key=f"edit_jump_{int(row['id'])}"):
-            st.session_state["selected_edit_id"] = int(row["id"])
+        rid = int(pd.to_numeric(row["id"], errors="coerce"))
+        if st.button("✏️ このレコードを編集", key=f"blog_edit_{rid}"):
+            st.session_state["jump_edit_id"] = rid
             st.rerun()
+
 
 
 def _fmt_num(v, unit: str, digits: int = 0) -> str:
