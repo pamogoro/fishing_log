@@ -9,6 +9,9 @@ def render_blog_detail_list(df: pd.DataFrame):
     if df is None or df.empty:
         st.info("データがありません。")
         return
+    
+    if "blog_show_images" not in st.session_state:
+        st.session_state["blog_show_images"] = False
 
     # st.warning("✅ edit_tab.render_edit_tab が呼ばれています（デバッグ表示）")
     # 並び順：日付 desc、時間 asc（近い釣行がまとまる）
@@ -26,7 +29,7 @@ def render_blog_detail_list(df: pd.DataFrame):
     with c2:
         only_catch = st.toggle("釣れた記録だけ", value=False, key="blog_only_catch")
     with c3:
-        show_images = st.toggle("画像を表示", value=False, key="blog_show_images")
+        show_images = st.toggle("画像を表示", key="blog_show_images")
 
     if only_catch:
         d["size_num"] = pd.to_numeric(d["size"], errors="coerce").fillna(0)
@@ -76,6 +79,9 @@ def _render_one_blog_card(row: pd.Series, show_images: bool = True):
             st.write(f"🧭 風向：{row.get('wind_direction') or '—'}")
             st.write(f"🪝 ルアー：{row.get('lure') or '—'}")
             st.write(f"🎮 アクション：{row.get('action') or '—'}")
+
+        rid = int(float(row["id"]))
+        st.session_state["jump_edit_id"] = rid
 
         # （任意）メモ欄や、今後「編集へ」導線を置くとさらに便利
         if st.button("このレコードを編集", key=f"edit_jump_{int(row['id'])}"):
@@ -388,6 +394,14 @@ def render_log_table_with_actions(df: pd.DataFrame):
     d["date_dt"] = pd.to_datetime(d["date"], errors="coerce")
     d["time_dt"] = pd.to_datetime(d["time"], format="%H:%M", errors="coerce")
     d = d.sort_values(by=["date_dt", "time_dt"], ascending=[False, True], na_position="last")
+
+    # ✅ ブログからのジャンプがあれば最優先で開く（確実）
+    jump_id = st.session_state.pop("jump_edit_id", None)
+    if jump_id is not None:
+        row = d[d["id"].astype(int) == int(jump_id)].iloc[0]
+        # スマホ前提で縦UI
+        _open_details_dialog(row, is_mobile=True)
+        return
 
     # 一覧は最小限：URL列は出さない（横スクロール削減のキモ）
     d["画像"] = (
