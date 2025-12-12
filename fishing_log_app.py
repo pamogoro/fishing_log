@@ -626,9 +626,9 @@ with tab1:
             df_view = pd.DataFrame({
                 "時刻": df_3h["time"].dt.strftime("%H:%M"),
                 "天気": df_3h["weather_code"].apply(weather_code_label),
-                "気温(℃)": df_3h["temp"],
-                "降水(mm)": df_3h["rain"],
-                "風速(m/s)": df_3h["wind_speed"],
+                "気温(℃)": df_3h["temp"].round(1),
+                "降水(mm)": df_3h["rain"].round(1),
+                "風速(m/s)": df_3h["wind_speed"].round(1),
                 "風向": df_3h["wind_dir"].apply(wind_dir_arrow),
             })
 
