@@ -304,7 +304,8 @@ def render_log_table_with_actions(df: pd.DataFrame):
     list_df = d[["id", "date", "time", "area", "size", "画像"]].copy()
     list_df = list_df.rename(columns={"id": "ID", "date": "日付", "time": "時間", "area": "エリア", "size": "サイズ"})
 
-    st.markdown("### 一覧（選択して詳細を開く）")
+    st.markdown("### 一覧")
+    st.caption("✏レコード一番左のチェックで編集/プレビューダイアログが開きます")
 
     selected_id: int | None = None
 
