@@ -5,6 +5,25 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 
+# edit_tab.py
+def render_edit_tab(
+    *,
+    TIDE736_PORTS=None,
+    fetch_all=None,
+    insert_row=None,
+    get_tide_height_for_time=None,
+):
+    st.header("📝 データ編集")
+
+    # fetch_all は fishing_log_app から渡される前提
+    if fetch_all is None:
+        from db_utils_gsheets import fetch_all as _fetch_all
+        fetch_all = _fetch_all
+
+    df = fetch_all()
+    render_log_table_with_actions(df)
+
+
 
 def _has_dataframe_selection() -> bool:
     """Streamlit の st.dataframe が selection_mode/on_select を受け付けるかを雑に判定。"""
