@@ -59,6 +59,47 @@ def wind_dir_arrow(deg: float) -> str:
     arrows = ["↑","↗","→","↘","↓","↙","←","↖"]
     return arrows[int((deg + 22.5) // 45) % 8]
 
+def weather_code_label(code: int | None) -> str:
+    if code is None:
+        return "—"
+
+    mapping = {
+        0:  "☀️ 晴れ",
+        1:  "🌤️ ほぼ晴れ",
+        2:  "⛅ 薄曇り",
+        3:  "☁️ 曇り",
+        45: "🌫️ 霧",
+        48: "🌫️ 霧",
+        51: "🌦️ 弱い霧雨",
+        53: "🌦️ 霧雨",
+        55: "🌦️ 強い霧雨",
+        61: "🌧️ 弱い雨",
+        63: "🌧️ 雨",
+        65: "🌧️ 強い雨",
+        71: "🌨️ 弱い雪",
+        73: "🌨️ 雪",
+        75: "🌨️ 強い雪",
+        80: "🌧️ にわか雨",
+        81: "🌧️ にわか雨",
+        82: "🌧️ 激しいにわか雨",
+    }
+    return mapping.get(int(code), f"❓({code})")
+
+def wind_speed_style(val):
+    try:
+        v = float(val)
+    except (TypeError, ValueError):
+        return ""
+
+    if v >= 10:
+        return "background-color: #ffcccc;"   # 赤（危険）
+    elif v >= 5:
+        return "background-color: #fff3cd;"   # 黄（注意）
+    else:
+        return ""
+
+
+
 def fetch_weather_hourly(lat: float, lon: float, target_date: Date) -> pd.DataFrame:
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -586,11 +627,17 @@ with tab1:
 
             df_view = pd.DataFrame({
                 "時刻": df_3h["time"].dt.strftime("%H:%M"),
+                "天気": df_3h["weather_code"].apply(weather_code_label),
                 "気温(℃)": df_3h["temp"],
                 "降水(mm)": df_3h["rain"],
                 "風速(m/s)": df_3h["wind_speed"],
                 "風向": df_3h["wind_dir"].apply(wind_dir_arrow),
             })
+
+            styled = df_view.style.applymap(
+                wind_speed_style,
+                subset=["風速(m/s)"]
+            )
 
             st.dataframe(
                 df_view,
