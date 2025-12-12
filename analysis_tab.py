@@ -55,6 +55,9 @@ def _summary_block(df):
     c3.metric("キャッチ率", f"{rate:.1f}%")
 
 def _tide_block(df):
+    st.title("🎣 シーバス釣行ログ管理アプリ")
+    st.caption("各要素の分析")
+    st.divider()
     st.subheader("🌊 潮回り別の傾向（キャッチ率）")
     if df.empty:
         st.info("データがありません。")

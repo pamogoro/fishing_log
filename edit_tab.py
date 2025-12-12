@@ -10,6 +10,9 @@ def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_
     fishing_log_app.py からキーワード引数付きで呼ばれても落ちない入口。
     いま使わない引数があってもOK（将来の拡張に強い）。
     """
+    st.title("🎣 シーバス釣行ログ管理アプリ")
+    st.caption("データ追加・編集・削除・画像のプレビュー")
+    st.divider()
     st.header("📝 データ編集")
 
     # 呼び出し元から渡されなかった場合の保険

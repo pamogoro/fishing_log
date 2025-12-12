@@ -18,7 +18,7 @@ def render_check_tab(
     wind_speed_style,
     fetch_current_sea_surface_temp,
 ):
-    st.markdown("### 🎣 シーバス釣行ログ管理アプリ")
+    st.title("🎣 シーバス釣行ログ管理アプリ")
     st.caption("釣行前チェック（潮位・天気・水温）")
     st.divider()
 
