@@ -443,26 +443,32 @@ def render_log_table_with_actions(df: pd.DataFrame):
 
         selected_id = st.selectbox("レコードを選択", options=options, format_func=_fmt, key="log_select_box")
 
-        # ブログ→編集ジャンプがあれば優先
-        jump_id = st.session_state.pop("selected_edit_id", None)
+        # --- ブログからのジャンプがあれば最優先で開く（これだけ自動オープンOK） ---
+        jump_id = st.session_state.pop("jump_edit_id", None)
         if jump_id is not None:
-            selected_id = int(jump_id)
-
-        if selected_id is not None:
-            row = d[d["id"] == int(selected_id)].iloc[0]
-            is_mobile = st.toggle("📱スマホ表示（縦レイアウト）", value=True, key="edit_is_mobile")
-
-            _open_details_dialog(row, is_mobile=is_mobile)
+            row = d[d["id"].astype(int) == int(jump_id)].iloc[0]
+            _open_details_dialog(row, is_mobile=True)
             return
 
+        # --- 通常：選択はするが、勝手に開かない（ボタン押下のみ） ---
+        options = list_df["ID"].tolist()
 
-    # --- 選択IDが取れたら即ポップアップを開く（ボタン不要） ---
-    if selected_id is not None:
-        row = d[d["id"] == selected_id].iloc[0]
+        def _fmt(_id: int) -> str:
+            r = list_df[list_df["ID"] == _id].iloc[0]
+            return f"{r['日付']} {r['時間']} | {r['エリア']} | {r['サイズ']}cm | 画像:{r['画像']}"
+
+        selected_id = st.selectbox(
+            "レコードを選択",
+            options=options,
+            format_func=_fmt,
+            key="log_select_box",
+        )
+
         is_mobile = st.toggle("📱スマホ表示（縦レイアウト）", value=True, key="edit_is_mobile")
 
-        # 前回と同じIDなら連続で開かない（連打防止）
-        if st.session_state.get("last_opened_id") != int(selected_id):
-            st.session_state["last_opened_id"] = int(selected_id)
+        # ✅ ここがポイント：ボタンを押した時だけ開く
+        if st.button("詳細（編集/削除/プレビュー）を開く", type="primary", key="open_detail_btn"):
+            row = d[d["id"].astype(int) == int(selected_id)].iloc[0]
             _open_details_dialog(row, is_mobile=is_mobile)
+
 
