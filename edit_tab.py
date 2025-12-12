@@ -10,7 +10,7 @@ def render_blog_detail_list(df: pd.DataFrame):
         st.info("データがありません。")
         return
 
-    st.warning("✅ edit_tab.render_edit_tab が呼ばれています（デバッグ表示）")
+    # st.warning("✅ edit_tab.render_edit_tab が呼ばれています（デバッグ表示）")
     # 並び順：日付 desc、時間 asc（近い釣行がまとまる）
     d = df.copy()
     d["date_dt"] = pd.to_datetime(d["date"], errors="coerce")
