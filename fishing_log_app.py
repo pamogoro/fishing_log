@@ -229,12 +229,7 @@ with tab_check:
     )
 
 with tab_edit:
-    render_edit_tab(
-        TIDE736_PORTS=TIDE736_PORTS,
-        fetch_all=fetch_all,
-        insert_row=insert_row,
-        get_tide_height_for_time=get_tide_height_for_time,
-    )
+    render_edit_tab()
 
 with tab_analysis:
     show_analysis()

@@ -6,13 +6,7 @@ import streamlit as st
 from datetime import datetime
 
 # edit_tab.py
-def render_edit_tab(
-    *,
-    TIDE736_PORTS=None,
-    fetch_all=None,
-    insert_row=None,
-    get_tide_height_for_time=None,
-):
+def render_edit_tab():
     st.header("📝 データ編集")
 
     # fetch_all は fishing_log_app から渡される前提
@@ -74,65 +68,6 @@ def _open_details_dialog(row: pd.Series, *, is_mobile: bool = True):
             existing_image_url3 = row.get("image_url3", "")
 
             with st.form(f"edit_form_dialog_{int(row['id'])}"):
-                st.subheader("📸 画像")
-
-                if is_mobile:
-                    cols = [st.container(), st.container(), st.container()]
-                else:
-                    cols = list(st.columns(3))
-
-                # --- slot 1 ---
-                with cols[0]:
-                    st.caption("画像1")
-                    image_file1 = st.file_uploader(
-                        "変更する場合のみ",
-                        type=["jpg", "jpeg", "png"],
-                        key=f"dialog_edit_image1_{row['id']}",
-                    )
-                    delete_image1 = False
-                    if existing_image_url1:
-                        st.image(existing_image_url1, caption="現在の画像1", use_container_width=True)
-                        delete_image1 = st.checkbox(
-                            "この画像1を削除する",
-                            value=False,
-                            key=f"dialog_delete_image1_{row['id']}",
-                        )
-
-                # --- slot 2 ---
-                with cols[1]:
-                    st.caption("画像2")
-                    image_file2 = st.file_uploader(
-                        "変更する場合のみ",
-                        type=["jpg", "jpeg", "png"],
-                        key=f"dialog_edit_image2_{row['id']}",
-                    )
-                    delete_image2 = False
-                    if existing_image_url2:
-                        st.image(existing_image_url2, caption="現在の画像2", use_container_width=True)
-                        delete_image2 = st.checkbox(
-                            "この画像2を削除する",
-                            value=False,
-                            key=f"dialog_delete_image2_{row['id']}",
-                        )
-
-                # --- slot 3 ---
-                with cols[2]:
-                    st.caption("画像3")
-                    image_file3 = st.file_uploader(
-                        "変更する場合のみ",
-                        type=["jpg", "jpeg", "png"],
-                        key=f"dialog_edit_image3_{row['id']}",
-                    )
-                    delete_image3 = False
-                    if existing_image_url3:
-                        st.image(existing_image_url3, caption="現在の画像3", use_container_width=True)
-                        delete_image3 = st.checkbox(
-                            "この画像3を削除する",
-                            value=False,
-                            key=f"dialog_delete_image3_{row['id']}",
-                        )
-
-                st.divider()
                 st.subheader("📝 本文")
 
                 # time のデフォルト
@@ -207,6 +142,65 @@ def _open_details_dialog(row: pd.Series, *, is_mobile: bool = True):
                             step=1,
                             min_value=0,
                         )
+                st.subheader("📸 画像")
+
+                if is_mobile:
+                    cols = [st.container(), st.container(), st.container()]
+                else:
+                    cols = list(st.columns(3))
+
+                # --- slot 1 ---
+                with cols[0]:
+                    st.caption("画像1")
+                    image_file1 = st.file_uploader(
+                        "変更する場合のみ",
+                        type=["jpg", "jpeg", "png"],
+                        key=f"dialog_edit_image1_{row['id']}",
+                    )
+                    delete_image1 = False
+                    if existing_image_url1:
+                        st.image(existing_image_url1, caption="現在の画像1", use_container_width=True)
+                        delete_image1 = st.checkbox(
+                            "この画像1を削除する",
+                            value=False,
+                            key=f"dialog_delete_image1_{row['id']}",
+                        )
+
+                # --- slot 2 ---
+                with cols[1]:
+                    st.caption("画像2")
+                    image_file2 = st.file_uploader(
+                        "変更する場合のみ",
+                        type=["jpg", "jpeg", "png"],
+                        key=f"dialog_edit_image2_{row['id']}",
+                    )
+                    delete_image2 = False
+                    if existing_image_url2:
+                        st.image(existing_image_url2, caption="現在の画像2", use_container_width=True)
+                        delete_image2 = st.checkbox(
+                            "この画像2を削除する",
+                            value=False,
+                            key=f"dialog_delete_image2_{row['id']}",
+                        )
+
+                # --- slot 3 ---
+                with cols[2]:
+                    st.caption("画像3")
+                    image_file3 = st.file_uploader(
+                        "変更する場合のみ",
+                        type=["jpg", "jpeg", "png"],
+                        key=f"dialog_edit_image3_{row['id']}",
+                    )
+                    delete_image3 = False
+                    if existing_image_url3:
+                        st.image(existing_image_url3, caption="現在の画像3", use_container_width=True)
+                        delete_image3 = st.checkbox(
+                            "この画像3を削除する",
+                            value=False,
+                            key=f"dialog_delete_image3_{row['id']}",
+                        )
+
+                st.divider()
 
                 col_upd, col_cancel = st.columns([1, 1])
                 do_update = col_upd.form_submit_button("更新")
