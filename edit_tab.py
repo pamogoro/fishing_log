@@ -5,21 +5,21 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 
-def render_edit_tab(
-    *,
-    TIDE736_PORTS=None,
-    fetch_all=None,
-    insert_row=None,
-    get_tide_height_for_time=None,
-):
+def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_tide_height_for_time=None, **_ignore):
+    """
+    fishing_log_app.py からキーワード引数付きで呼ばれても落ちない入口。
+    いま使わない引数があってもOK（将来の拡張に強い）。
+    """
     st.header("📝 データ編集")
 
-    # fetch_all は fishing_log_app から渡される前提
+    # 呼び出し元から渡されなかった場合の保険
     if fetch_all is None:
         from db_utils_gsheets import fetch_all as _fetch_all
         fetch_all = _fetch_all
 
     df = fetch_all()
+
+    # ↓ここで、あなたが作った「一覧→選択→ダイアログ」の関数を呼ぶ
     render_log_table_with_actions(df)
 
 def _has_dataframe_selection() -> bool:
