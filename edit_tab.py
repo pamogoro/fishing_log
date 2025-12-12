@@ -80,9 +80,6 @@ def _render_one_blog_card(row: pd.Series, show_images: bool = True):
             st.write(f"🪝 ルアー：{row.get('lure') or '—'}")
             st.write(f"🎮 アクション：{row.get('action') or '—'}")
 
-        rid = int(float(row["id"]))
-        st.session_state["jump_edit_id"] = rid
-
         # （任意）メモ欄や、今後「編集へ」導線を置くとさらに便利
         if st.button("このレコードを編集", key=f"edit_jump_{int(row['id'])}"):
             st.session_state["selected_edit_id"] = int(row["id"])
@@ -384,8 +381,6 @@ def _open_details_dialog(row: pd.Series, *, is_mobile: bool = True):
 
 
 def render_log_table_with_actions(df: pd.DataFrame):
-    """スマホ向け：一覧→1件選択→ポップアップ（詳細）"""
-
     if df is None or df.empty:
         st.info("データがありません。")
         return
@@ -395,68 +390,35 @@ def render_log_table_with_actions(df: pd.DataFrame):
     d["time_dt"] = pd.to_datetime(d["time"], format="%H:%M", errors="coerce")
     d = d.sort_values(by=["date_dt", "time_dt"], ascending=[False, True], na_position="last")
 
-    # ✅ ブログからのジャンプがあれば最優先で開く（確実）
+    # ✅ ブログからのジャンプがあれば最優先で開く（ここは1回だけ）
     jump_id = st.session_state.pop("jump_edit_id", None)
     if jump_id is not None:
-        row = d[d["id"].astype(int) == int(jump_id)].iloc[0]
-        # スマホ前提で縦UI
+        d["id_int"] = pd.to_numeric(d["id"], errors="coerce").fillna(-1).astype(int)
+        row = d[d["id_int"] == int(jump_id)].iloc[0]
         _open_details_dialog(row, is_mobile=True)
         return
 
-    # 一覧は最小限：URL列は出さない（横スクロール削減のキモ）
+    # 一覧は最小限：URL列は出さない
     d["画像"] = (
         d[["image_url1", "image_url2", "image_url3"]]
         .fillna("")
         .astype(str)
         .apply(lambda r: "あり" if any(x.strip() for x in r.values) else "—", axis=1)
     )
-
     list_df = d[["id", "date", "time", "area", "size", "画像"]].copy()
     list_df = list_df.rename(columns={"id": "ID", "date": "日付", "time": "時間", "area": "エリア", "size": "サイズ"})
 
     st.markdown("### 一覧")
-    st.caption("✏レコード一番左のチェックで編集/プレビューダイアログが開きます")
+    st.caption("選択してから「開く」を押すと編集/削除/プレビューが出ます")
 
-    selected_id: int | None = None
-
-    if _has_dataframe_selection():
-        ev = st.dataframe(
-            list_df,
-            use_container_width=True,
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row",
-            key="log_select_table",
-        )
-        try:
-            rows = ev.selection.rows  # type: ignore[attr-defined]
-        except Exception:
-            rows = []
-        if rows:
-            selected_id = int(list_df.iloc[rows[0]]["ID"])
-    else:
-        options = list_df["ID"].tolist()
-
-        def _fmt(_id: int) -> str:
-            r = list_df[list_df["ID"] == _id].iloc[0]
-            return f"{r['日付']} {r['時間']} | {r['エリア']} | {r['サイズ']}cm | 画像:{r['画像']}"
-
-        selected_id = st.selectbox("レコードを選択", options=options, format_func=_fmt, key="log_select_box")
-
-    # --- ブログからのジャンプがあれば最優先で開く（これだけ自動オープンOK） ---
-    jump_id = st.session_state.pop("jump_edit_id", None)
-    if jump_id is not None:
-        row = d[d["id"].astype(int) == int(jump_id)].iloc[0]
-        _open_details_dialog(row, is_mobile=True)
-        return
-
-    # --- 通常：選択はするが、勝手に開かない（ボタン押下のみ） ---
-    options = list_df["ID"].tolist()
+    # 選択UIは1つだけ（確実に）
+    list_df["ID_int"] = pd.to_numeric(list_df["ID"], errors="coerce").fillna(-1).astype(int)
+    options = list_df["ID_int"].tolist()
 
     def _fmt(_id: int) -> str:
-        r = list_df[list_df["ID"] == _id].iloc[0]
+        r = list_df[list_df["ID_int"] == _id].iloc[0]
         return f"{r['日付']} {r['時間']} | {r['エリア']} | {r['サイズ']}cm | 画像:{r['画像']}"
-    
+
     selected_id = st.selectbox(
         "レコードを選択",
         options=options,
@@ -466,9 +428,9 @@ def render_log_table_with_actions(df: pd.DataFrame):
 
     is_mobile = st.toggle("📱スマホ表示（縦レイアウト）", value=True, key="edit_is_mobile")
 
-    # ✅ ここがポイント：ボタンを押した時だけ開く
     if st.button("詳細（編集/削除/プレビュー）を開く", type="primary", key="open_detail_btn"):
-        row = d[d["id"].astype(int) == int(selected_id)].iloc[0]
+        d["id_int"] = pd.to_numeric(d["id"], errors="coerce").fillna(-1).astype(int)
+        row = d[d["id_int"] == int(selected_id)].iloc[0]
         _open_details_dialog(row, is_mobile=is_mobile)
 
 
