@@ -224,6 +224,7 @@ def render_log_table_with_actions(df: pd.DataFrame):
     d = d[display_cols].reset_index(drop=True)
     d["編集"] = False
     d["削除"] = False
+    d["プレビュー"] = False
 
     # --- データエディタ（表内でチェック可能） ---
     edited_df = st.data_editor(
@@ -231,9 +232,11 @@ def render_log_table_with_actions(df: pd.DataFrame):
         use_container_width=True,
         hide_index=True,
         num_rows="fixed",
+        key="log_table_editor",
         column_config={
             "編集": st.column_config.CheckboxColumn("編集", help="この行を編集します"),
             "削除": st.column_config.CheckboxColumn("削除", help="この行を削除します"),
+            "プレビュー": st.column_config.CheckboxColumn("プレビュー", help="この行の画像を下で表示します"),
             # 主要列の見出し整形（任意）
             "tide_height": st.column_config.NumberColumn("潮位(cm)", format="%.0f"),
             "temperature": st.column_config.NumberColumn("気温(℃)", format="%.1f"),
@@ -244,9 +247,36 @@ def render_log_table_with_actions(df: pd.DataFrame):
         },
     )
 
+    # --- プレビュー状態の初期化 ---
+    if "preview_closed_for_id" not in st.session_state:
+        st.session_state.preview_closed_for_id = None
+
     # --- 編集対象（複数チェックされていても先頭だけ扱う） ---
     edit_rows = edited_df.index[edited_df["編集"] == True].tolist()
     delete_rows = edited_df.index[edited_df["削除"] == True].tolist()
+    preview_rows = edited_df.index[edited_df["プレビュー"] == True].tolist()
+
+    # ----- プレビューフロー -----
+    if preview_rows:
+        i = preview_rows[0]   # 複数チェックされていても先頭だけ
+        row = edited_df.loc[i]
+
+        st.markdown("#### 画像プレビュー")
+
+        c1, c2, c3 = st.columns(3)
+        urls = [
+            row.get("image_url1", ""),
+            row.get("image_url2", ""),
+            row.get("image_url3", ""),
+        ]
+        cols = [c1, c2, c3]
+
+        for idx, (url, col) in enumerate(zip(urls, cols), start=1):
+            with col:
+                if isinstance(url, str) and url.strip():
+                    st.image(url, caption=f"画像{idx}", use_column_width=True)
+                else:
+                    st.caption(f"画像{idx}（なし）")
 
     # ----- 編集フロー -----
     if edit_rows:
@@ -612,79 +642,6 @@ with tab1:
 
     st.divider()
     st.subheader("登録済みデータ")
-
-    # ---------- 編集フォーム（必要時だけ表示） ----------
-    # if st.session_state.edit_row:
-    #     row = st.session_state.edit_row
-    #     st.markdown(f"**✏️ 編集モード（ID: {row['id']}）**")
-
-    #     with st.form("edit_form"):
-    #         c1, c2 = st.columns(2)
-    #         with c1:
-    #             def_time = None
-    #             if row.get("time"):
-    #                 try:
-    #                     def_time = datetime.strptime(row["time"], "%H:%M").time()
-    #                 except ValueError:
-    #                     pass
-    #             time_e = st.time_input("時間", value=def_time, key=f"time_e_{row['id']}")
-    #             # time = st.time_input("時間", value=datetime.now().time())  # ← 追加
-    #             area_e = st.text_input("エリア", row["area"] or "")
-    #             tide_list = ["大潮", "中潮", "小潮", "若潮", "長潮"]
-    #             idx = tide_list.index(row["tide_type"]) if row["tide_type"] in tide_list else 1
-    #             tide_type_e = st.selectbox("潮回り", tide_list, index=idx)
-    #             temperature_e = st.number_input(
-    #                 "気温 (℃)", value=float(row["temperature"]) if row["temperature"] is not None else 0.0,
-    #                 step=0.1, format="%.1f"
-    #             )
-
-    #         with c2:
-    #             tide_height = st.number_input("潮位 (cm)", step=1, min_value=0)  # ← 追加
-    #             wind_direction_e = st.text_input("風向", row["wind_direction"] or "")
-    #             lure_e = st.text_input("ルアー", row["lure"] or "")
-    #             action_e = st.text_input("アクション", row["action"] or "")
-    #             size_e = st.number_input(
-    #                     "サイズ (cm)",
-    #                     value=int(row["size"]) if row["size"] is not None else 0,
-    #                     step=1,
-    #                     min_value=0
-    #                 )
-
-    #         col_ok, col_cancel = st.columns(2)
-    #         update = col_ok.form_submit_button("更新")
-    #         cancel = col_cancel.form_submit_button("キャンセル")
-
-    #         # （右側カラム）
-    #         tide_height_e = st.number_input(
-    #             "潮位 (cm)",
-    #             value=float(row["tide_height"]) if row["tide_height"] is not None else 0.0,
-    #             step=1.0
-    #         )
-
-    #         if update:
-    #             time_str = time_e.strftime("%H:%M") if time_e else "00:00"
-                
-    #             update_row(
-    #             int(row["id"]),
-    #             area_e.strip(),
-    #             tide_type_e,
-    #             float(temperature_e),
-    #             wind_direction_e.strip(),
-    #             lure_e.strip(),
-    #             action_e.strip(),
-    #             float(size_e),
-    #             float(tide_height_e) if tide_height_e is not None else None,
-    #             time=time_str
-    #         )
-    #             st.success("✏️ 更新が完了しました")
-    #             st.session_state.edit_row = None
-    #             st.rerun()
-
-
-    #         if cancel:
-    #             st.info("✋ 編集をキャンセルしました")
-    #             st.session_state.edit_row = None
-    #             st.rerun()
 
     # ---------- 一覧表示 & 行ごとの操作 ----------
     df = fetch_all()
