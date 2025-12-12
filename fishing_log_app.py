@@ -640,7 +640,7 @@ with tab1:
             )
 
             st.dataframe(
-                df_view,
+                styled,
                 hide_index=True,
                 use_container_width=True,
             )
