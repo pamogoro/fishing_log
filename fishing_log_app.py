@@ -9,6 +9,20 @@ import urllib.parse
 from datetime import datetime, date as Date
 import requests  # ← 追加
 
+# 天気の取得ポイントを定義
+WEATHER_POINTS = {
+    "芝浦":  {"lat": 35.640, "lon": 139.763},
+    "羽田":  {"lat": 35.545, "lon": 139.781},
+    "銚子":  {"lat": 35.740, "lon": 140.830},
+    "鴨川":  {"lat": 35.110, "lon": 140.100},
+    "岩井袋": {"lat": 35.060, "lon": 139.820},
+    "横須賀": {"lat": 35.280, "lon": 139.670},
+    "江の島": {"lat": 35.300, "lon": 139.480},
+    "気仙沼": {"lat": 38.900, "lon": 141.570},
+    "石巻":  {"lat": 38.430, "lon": 141.300},
+}
+
+
 # fishing_log_app.py の上の方に追加
 TIDE736_PORTS = {
     "芝浦": {"pc": 13, "hc": 2},
@@ -36,6 +50,47 @@ SST_POINTS = {
 }
 
 @st.cache_data(ttl=1800, show_spinner=False)  # 30分キャッシュ
+def filter_every_3_hours(df: pd.DataFrame) -> pd.DataFrame:
+    return df[df["time"].dt.hour % 3 == 0].reset_index(drop=True)
+
+def wind_dir_arrow(deg: float) -> str:
+    if deg is None:
+        return "—"
+    arrows = ["↑","↗","→","↘","↓","↙","←","↖"]
+    return arrows[int((deg + 22.5) // 45) % 8]
+
+def fetch_weather_hourly(lat: float, lon: float, target_date: Date) -> pd.DataFrame:
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "timezone": "Asia/Tokyo",
+        "start_date": target_date.strftime("%Y-%m-%d"),
+        "end_date": target_date.strftime("%Y-%m-%d"),
+        "hourly": (
+            "temperature_2m,"
+            "precipitation,"
+            "wind_speed_10m,"
+            "wind_direction_10m,"
+            "weather_code"
+        ),
+    }
+
+    r = requests.get(url, params=params, timeout=10)
+    r.raise_for_status()
+    data = r.json()["hourly"]
+
+    df = pd.DataFrame({
+        "time": pd.to_datetime(data["time"]),
+        "temp": data["temperature_2m"],
+        "rain": data["precipitation"],
+        "wind_speed": data["wind_speed_10m"],
+        "wind_dir": data["wind_direction_10m"],
+        "weather_code": data["weather_code"],
+    })
+
+    return df
+
 def fetch_current_sea_surface_temp(lat: float, lon: float) -> float | None:
     """
     Open-Meteo Marine API から現在の海面水温（℃）を取得
@@ -518,6 +573,36 @@ with tab1:
     st.image(tide_img_url, use_column_width=True)
     # st.image("https://api.tide736.net/tide_image.php?pc=28&hc=9&yr=2025&mn=12&dy=11&rg=day&w=768&h=512&lc=blue&gcs=cyan&gcf=blue&ld=on&ttd=on&tsmd=on")
     st.caption("※データ元：tide736.net（日本沿岸736港の潮汐表）")
+
+    st.subheader("3時間ごとの天気・風（目安）")
+
+    p = WEATHER_POINTS.get(spot_name)
+    if p is None:
+        st.info("この港の天気座標が未登録です。")
+    else:
+        try:
+            df_hourly = fetch_weather_hourly(p["lat"], p["lon"], tide_date)
+            df_3h = filter_every_3_hours(df_hourly)
+
+            df_view = pd.DataFrame({
+                "時刻": df_3h["time"].dt.strftime("%H:%M"),
+                "気温(℃)": df_3h["temp"],
+                "降水(mm)": df_3h["rain"],
+                "風速(m/s)": df_3h["wind_speed"],
+                "風向": df_3h["wind_dir"].apply(wind_dir_arrow),
+            })
+
+            st.dataframe(
+                df_view,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            st.caption("※ Open-Meteo（予報モデル）。風速は10m高度の値です。")
+
+        except Exception as e:
+            st.warning(f"天気の取得に失敗しました: {e}")
+
     st.divider()
 
     # ▼ ここから水温表示ブロックを追加 ▼
