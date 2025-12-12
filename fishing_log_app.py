@@ -92,13 +92,11 @@ def wind_speed_style(val):
         return ""
 
     if v >= 10:
-        return "background-color: #ffcccc;"   # 赤（危険）
+        return "color: #d00000; font-weight: bold;"   # 赤（強風）
     elif v >= 5:
-        return "background-color: #fff3cd;"   # 黄（注意）
+        return "color: #e6a700; font-weight: bold;"   # 黄（注意）
     else:
         return ""
-
-
 
 def fetch_weather_hourly(lat: float, lon: float, target_date: Date) -> pd.DataFrame:
     url = "https://api.open-meteo.com/v1/forecast"
