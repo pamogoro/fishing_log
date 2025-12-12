@@ -26,7 +26,7 @@ def render_blog_detail_list(df: pd.DataFrame):
     with c2:
         only_catch = st.toggle("釣れた記録だけ", value=False, key="blog_only_catch")
     with c3:
-        show_images = st.toggle("画像を表示", value=True, key="blog_show_images")
+        show_images = st.toggle("画像を表示", value=False, key="blog_show_images")
 
     if only_catch:
         d["size_num"] = pd.to_numeric(d["size"], errors="coerce").fillna(0)
@@ -37,7 +37,7 @@ def render_blog_detail_list(df: pd.DataFrame):
     # 日付ごとにまとまるようにグルーピング
     d["date_str"] = d["date_dt"].dt.strftime("%Y-%m-%d")
     for date_str, g in d.groupby("date_str", sort=False):
-        st.markdown(f"### 🗓 {date_str}")
+        st.markdown(f"### 📅 {date_str}")
         for _, row in g.iterrows():
             _render_one_blog_card(row, show_images=show_images)
         st.divider()
@@ -78,9 +78,9 @@ def _render_one_blog_card(row: pd.Series, show_images: bool = True):
             st.write(f"🎮 アクション：{row.get('action') or '—'}")
 
         # （任意）メモ欄や、今後「編集へ」導線を置くとさらに便利
-        # if st.button("このレコードを編集", key=f"edit_jump_{int(row['id'])}"):
-        #     st.session_state["selected_edit_id"] = int(row["id"])
-        #     st.rerun()
+        if st.button("このレコードを編集", key=f"edit_jump_{int(row['id'])}"):
+            st.session_state["selected_edit_id"] = int(row["id"])
+            st.rerun()
 
 
 def _fmt_num(v, unit: str, digits: int = 0) -> str:
@@ -428,6 +428,19 @@ def render_log_table_with_actions(df: pd.DataFrame):
             return f"{r['日付']} {r['時間']} | {r['エリア']} | {r['サイズ']}cm | 画像:{r['画像']}"
 
         selected_id = st.selectbox("レコードを選択", options=options, format_func=_fmt, key="log_select_box")
+
+        # ブログ→編集ジャンプがあれば優先
+        jump_id = st.session_state.pop("selected_edit_id", None)
+        if jump_id is not None:
+            selected_id = int(jump_id)
+
+        if selected_id is not None:
+            row = d[d["id"] == int(selected_id)].iloc[0]
+            is_mobile = st.toggle("📱スマホ表示（縦レイアウト）", value=True, key="edit_is_mobile")
+
+            _open_details_dialog(row, is_mobile=is_mobile)
+            return
+
 
     # --- 選択IDが取れたら即ポップアップを開く（ボタン不要） ---
     if selected_id is not None:
