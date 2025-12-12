@@ -114,8 +114,8 @@ def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_
 
     st.divider()
 
-    # ↓ここで、あなたが作った「一覧→選択→ダイアログ」の関数を呼ぶ
-    render_log_table_with_actions(df)
+    # ② ブログ形式の詳細一覧（同一ページでスクロール閲覧）
+    render_blog_detail_list(df)
 
 def _has_dataframe_selection() -> bool:
     """Streamlit の st.dataframe が selection_mode/on_select を受け付けるかを雑に判定。"""
