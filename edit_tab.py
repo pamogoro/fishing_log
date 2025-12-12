@@ -15,7 +15,7 @@ def render_edit_tab():
         fetch_all = _fetch_all
 
     df = fetch_all()
-    render_log_table_with_actions(df)
+    return df
 
 
 
