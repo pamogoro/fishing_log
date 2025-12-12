@@ -316,8 +316,13 @@ def render_log_table_with_actions(df: pd.DataFrame):
 
         selected_id = st.selectbox("レコードを選択", options=options, format_func=_fmt, key="log_select_box")
 
+    # --- 選択IDが取れたら即ポップアップを開く（ボタン不要） ---
     if selected_id is not None:
         row = d[d["id"] == selected_id].iloc[0]
         is_mobile = st.toggle("📱スマホ表示（縦レイアウト）", value=True, key="edit_is_mobile")
-        if st.button("詳細を開く", type="primary", key="open_detail_btn"):
+
+        # 前回と同じIDなら連続で開かない（連打防止）
+        if st.session_state.get("last_opened_id") != int(selected_id):
+            st.session_state["last_opened_id"] = int(selected_id)
             _open_details_dialog(row, is_mobile=is_mobile)
+
