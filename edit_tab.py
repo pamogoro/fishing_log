@@ -5,6 +5,93 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 
+def render_blog_detail_list(df: pd.DataFrame):
+    if df is None or df.empty:
+        st.info("データがありません。")
+        return
+
+    # 並び順：日付 desc、時間 asc（近い釣行がまとまる）
+    d = df.copy()
+    d["date_dt"] = pd.to_datetime(d["date"], errors="coerce")
+    d["time_dt"] = pd.to_datetime(d["time"], format="%H:%M", errors="coerce")
+    d = d.sort_values(by=["date_dt", "time_dt"], ascending=[False, True], na_position="last")
+
+    st.subheader("📚 詳細一覧（ブログ形式）")
+
+    # 表示件数を絞れるとスマホで軽い＆探しやすい
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        limit = st.selectbox("表示件数", [10, 20, 50, 100], index=1, key="blog_limit")
+    with c2:
+        only_catch = st.toggle("釣れた記録だけ", value=False, key="blog_only_catch")
+    with c3:
+        show_images = st.toggle("画像を表示", value=True, key="blog_show_images")
+
+    if only_catch:
+        d["size_num"] = pd.to_numeric(d["size"], errors="coerce").fillna(0)
+        d = d[d["size_num"] > 0]
+
+    d = d.head(int(limit))
+
+    # 日付ごとにまとまるようにグルーピング
+    d["date_str"] = d["date_dt"].dt.strftime("%Y-%m-%d")
+    for date_str, g in d.groupby("date_str", sort=False):
+        st.markdown(f"### 🗓 {date_str}")
+        for _, row in g.iterrows():
+            _render_one_blog_card(row, show_images=show_images)
+        st.divider()
+
+
+def _render_one_blog_card(row: pd.Series, show_images: bool = True):
+    # 見出し（サッと把握）
+    time = row.get("time") or "—"
+    area = row.get("area") or "—"
+    size = row.get("size")
+    size_txt = f"{int(size)}cm" if pd.notna(size) and str(size).strip() != "" else "—"
+
+    title = f"🕒 {time} / 📍 {area} / 🎣 {size_txt}"
+    with st.container(border=True):
+        st.markdown(f"**{title}**")
+        st.caption(f"ID: {int(row['id'])}" if pd.notna(row.get("id")) else "")
+
+        # 画像（縦でも横でもOK）
+        if show_images:
+            urls = [row.get("image_url1", ""), row.get("image_url2", ""), row.get("image_url3", "")]
+            urls = [u for u in urls if isinstance(u, str) and u.strip()]
+            if urls:
+                # スマホでも見やすいように横並びより「1枚ずつ」優先
+                for i, u in enumerate(urls, start=1):
+                    st.image(u, caption=f"画像{i}", use_container_width=True)
+            else:
+                st.caption("📷 画像なし")
+
+        # 情報（見やすく2列）
+        c1, c2 = st.columns(2)
+        with c1:
+            st.write(f"🌊 潮回り：{row.get('tide_type') or '—'}")
+            st.write(f"📏 潮位：{_fmt_num(row.get('tide_height'), 'cm', digits=0)}")
+            st.write(f"🌡 気温：{_fmt_num(row.get('temperature'), '℃', digits=1)}")
+        with c2:
+            st.write(f"🧭 風向：{row.get('wind_direction') or '—'}")
+            st.write(f"🪝 ルアー：{row.get('lure') or '—'}")
+            st.write(f"🎮 アクション：{row.get('action') or '—'}")
+
+        # （任意）メモ欄や、今後「編集へ」導線を置くとさらに便利
+        # if st.button("このレコードを編集", key=f"edit_jump_{int(row['id'])}"):
+        #     st.session_state["selected_edit_id"] = int(row["id"])
+        #     st.rerun()
+
+
+def _fmt_num(v, unit: str, digits: int = 0) -> str:
+    try:
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return "—"
+        f = float(v)
+        fmt = f"{{:.{digits}f}}"
+        return fmt.format(f) + f" {unit}"
+    except Exception:
+        return "—"
+
 def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_tide_height_for_time=None, **_ignore):
     """
     fishing_log_app.py からキーワード引数付きで呼ばれても落ちない入口。
@@ -21,6 +108,11 @@ def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_
         fetch_all = _fetch_all
 
     df = fetch_all()
+
+    # ① 一覧（最小列）
+    render_log_table_with_actions(df)
+
+    st.divider()
 
     # ↓ここで、あなたが作った「一覧→選択→ダイアログ」の関数を呼ぶ
     render_log_table_with_actions(df)
