@@ -106,6 +106,10 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
 
     from db_utils_gsheets import upload_image_to_cloudinary
 
+    if "add_image_uploader_nonce" not in st.session_state:
+        st.session_state["add_image_uploader_nonce"] = 0
+
+    uploader_nonce = st.session_state["add_image_uploader_nonce"]
     port_names = list((TIDE736_PORTS or {}).keys())
 
     with st.form("add_log_form"):
@@ -148,12 +152,25 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
 
         st.markdown("#### 📸 画像（任意）")
         ic1, ic2, ic3 = st.columns(3)
+        
         with ic1:
-            image_file1 = st.file_uploader("画像1", type=["jpg", "jpeg", "png"], key="add_image1")
+            image_file1 = st.file_uploader(
+                "画像1",
+                type=["jpg", "jpeg", "png"],
+                key=f"add_image1_{uploader_nonce}"
+            )
         with ic2:
-            image_file2 = st.file_uploader("画像2", type=["jpg", "jpeg", "png"], key="add_image2")
+            image_file2 = st.file_uploader(
+                "画像2",
+                type=["jpg", "jpeg", "png"],
+                key=f"add_image2_{uploader_nonce}"
+            )
         with ic3:
-            image_file3 = st.file_uploader("画像3", type=["jpg", "jpeg", "png"], key="add_image3")
+            image_file3 = st.file_uploader(
+                "画像3",
+                type=["jpg", "jpeg", "png"],
+                key=f"add_image3_{uploader_nonce}"
+            )
 
         submitted = st.form_submit_button("追加する", type="primary")
 
@@ -209,6 +226,25 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
             image_url3=uploaded_urls[2],
         )
         st.success("新規追加しました")
+
+        # フォーム初期化
+        st.session_state["add_date"] = datetime.now().date()
+        st.session_state["add_area"] = ""
+        st.session_state["add_tide"] = "中潮"
+        st.session_state["add_time"] = datetime.now().replace(second=0, microsecond=0).time()
+        st.session_state["add_temp"] = 0.0
+        st.session_state["add_wind"] = ""
+        st.session_state["add_lure"] = ""
+        st.session_state["add_action"] = ""
+        st.session_state["add_size"] = 0
+        st.session_state["add_tide_height_manual"] = 0.0
+        st.session_state["add_auto_tide"] = bool(port_names)
+        if port_names:
+            st.session_state["add_tide_port"] = port_names[0]
+
+        # file_uploader もキーを入れ替えて実質リセット
+        st.session_state["add_image_uploader_nonce"] = st.session_state.get("add_image_uploader_nonce", 0) + 1
+
         st.rerun()
     except Exception as e:
         st.error(f"追加に失敗しました: {e}")
