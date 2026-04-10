@@ -152,7 +152,7 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
 
         st.markdown("#### 📸 画像（任意）")
         ic1, ic2, ic3 = st.columns(3)
-        
+
         with ic1:
             image_file1 = st.file_uploader(
                 "画像1",
@@ -227,22 +227,7 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
         )
         st.success("新規追加しました")
 
-        # フォーム初期化
-        st.session_state["add_date"] = datetime.now().date()
-        st.session_state["add_area"] = ""
-        st.session_state["add_tide"] = "中潮"
-        st.session_state["add_time"] = datetime.now().replace(second=0, microsecond=0).time()
-        st.session_state["add_temp"] = 0.0
-        st.session_state["add_wind"] = ""
-        st.session_state["add_lure"] = ""
-        st.session_state["add_action"] = ""
-        st.session_state["add_size"] = 0
-        st.session_state["add_tide_height_manual"] = 0.0
-        st.session_state["add_auto_tide"] = bool(port_names)
-        if port_names:
-            st.session_state["add_tide_port"] = port_names[0]
-
-        # file_uploader もキーを入れ替えて実質リセット
+        # file_uploader 対策
         st.session_state["add_image_uploader_nonce"] = st.session_state.get("add_image_uploader_nonce", 0) + 1
 
         st.rerun()
