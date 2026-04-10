@@ -97,6 +97,122 @@ def _fmt_num(v, unit: str, digits: int = 0) -> str:
     except Exception:
         return "—"
 
+def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_time=None):
+    st.subheader("➕ 新規追加")
+
+    if insert_row is None:
+        st.warning("追加関数が見つからないため、新規追加フォームを表示できません。")
+        return
+
+    from db_utils_gsheets import upload_image_to_cloudinary
+
+    port_names = list((TIDE736_PORTS or {}).keys())
+
+    with st.form("add_log_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            date_v = st.date_input("日付", value=datetime.now().date(), key="add_date")
+            area_v = st.text_input("エリア", key="add_area")
+            tide_v = st.selectbox("潮回り", ["大潮", "中潮", "小潮", "若潮", "長潮"], index=1, key="add_tide")
+            time_v = st.time_input(
+                "時間",
+                value=datetime.now().replace(second=0, microsecond=0).time(),
+                key="add_time"
+            )
+        with c2:
+            temp_v = st.number_input("気温(℃)", value=0.0, step=0.1, format="%.1f", key="add_temp")
+            wind_v = st.text_input("風向", key="add_wind")
+            lure_v = st.text_input("ルアー", key="add_lure")
+            action_v = st.text_input("アクション", key="add_action")
+            size_v = st.number_input("サイズ(cm) ※ボウズは0", min_value=0, value=0, step=1, key="add_size")
+
+        st.markdown("#### 🌊 潮位")
+        tide_height_manual = st.number_input(
+            "潮位(cm) 手入力",
+            min_value=0.0,
+            value=0.0,
+            step=1.0,
+            key="add_tide_height_manual",
+            help="自動取得しない場合は手入力してください。0のままでも登録できます。",
+        )
+        auto_tide = st.checkbox(
+            "港と時刻から潮位を自動取得する",
+            value=bool(port_names),
+            disabled=not bool(port_names),
+            key="add_auto_tide",
+        )
+
+        port_name = None
+        if auto_tide and port_names:
+            port_name = st.selectbox("潮位の基準港", options=port_names, index=0, key="add_tide_port")
+
+        st.markdown("#### 📸 画像（任意）")
+        ic1, ic2, ic3 = st.columns(3)
+        with ic1:
+            image_file1 = st.file_uploader("画像1", type=["jpg", "jpeg", "png"], key="add_image1")
+        with ic2:
+            image_file2 = st.file_uploader("画像2", type=["jpg", "jpeg", "png"], key="add_image2")
+        with ic3:
+            image_file3 = st.file_uploader("画像3", type=["jpg", "jpeg", "png"], key="add_image3")
+
+        submitted = st.form_submit_button("追加する", type="primary")
+
+    if not submitted:
+        return
+
+    area_clean = str(area_v).strip()
+    if not area_clean:
+        st.warning("エリアは必須です。")
+        return
+
+    time_str = time_v.strftime("%H:%M") if time_v else "00:00"
+
+    tide_height_value = None
+    if auto_tide and port_name and TIDE736_PORTS and get_tide_height_for_time is not None:
+        try:
+            port = TIDE736_PORTS[port_name]
+            tide_height_value, matched_time = get_tide_height_for_time(
+                pc=port["pc"],
+                hc=port["hc"],
+                target_date=date_v,
+                t=time_v,
+            )
+            st.info(f"{port_name} の {matched_time} データから潮位 {float(tide_height_value):.0f}cm を採用しました。")
+        except Exception as e:
+            st.warning(f"潮位の自動取得に失敗したため、手入力値を使います: {e}")
+
+    if tide_height_value is None:
+        tide_height_value = float(tide_height_manual) if float(tide_height_manual) > 0 else None
+
+    uploaded_urls = []
+    for idx, image_file in enumerate([image_file1, image_file2, image_file3], start=1):
+        if image_file is None:
+            uploaded_urls.append(None)
+            continue
+        filename = f"new_{date_v.strftime('%Y%m%d')}_{idx}_{image_file.name}"
+        uploaded_urls.append(upload_image_to_cloudinary(image_file, filename))
+
+    try:
+        insert_row(
+            date=date_v.strftime("%Y-%m-%d"),
+            time=time_str,
+            area=area_clean,
+            tide_type=tide_v,
+            tide_height=tide_height_value,
+            temperature=float(temp_v) if temp_v is not None else None,
+            wind_direction=str(wind_v).strip() or None,
+            lure=str(lure_v).strip() or None,
+            action=str(action_v).strip() or None,
+            size=float(size_v) if size_v is not None else None,
+            image_url1=uploaded_urls[0],
+            image_url2=uploaded_urls[1],
+            image_url3=uploaded_urls[2],
+        )
+        st.success("新規追加しました")
+        st.rerun()
+    except Exception as e:
+        st.error(f"追加に失敗しました: {e}")
+
 def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_tide_height_for_time=None, **_ignore):
     """
     fishing_log_app.py からキーワード引数付きで呼ばれても落ちない入口。
@@ -107,29 +223,28 @@ def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_
     st.divider()
     st.header("📝 データ編集")
 
-    # 呼び出し元から渡されなかった場合の保険
     if fetch_all is None:
         from db_utils_gsheets import fetch_all as _fetch_all
         fetch_all = _fetch_all
 
     df = fetch_all()
 
-    # ① 一覧（最小列）
+    # ① 新規追加
+    render_add_form(
+        TIDE736_PORTS=TIDE736_PORTS,
+        insert_row=insert_row,
+        get_tide_height_for_time=get_tide_height_for_time,
+    )
+
+    st.divider()
+
+    # ② 一覧
     render_log_table_with_actions(df)
 
     st.divider()
 
-    # ② ブログ形式の詳細一覧（同一ページでスクロール閲覧）
+    # ③ ブログ形式の詳細一覧
     render_blog_detail_list(df)
-
-def _has_dataframe_selection() -> bool:
-    """Streamlit の st.dataframe が selection_mode/on_select を受け付けるかを雑に判定。"""
-    try:
-        import inspect
-        sig = inspect.signature(st.dataframe)
-        return ("selection_mode" in sig.parameters) and ("on_select" in sig.parameters)
-    except Exception:
-        return False
 
 
 def _open_details_dialog(row: pd.Series, *, is_mobile: bool = True):
