@@ -81,7 +81,7 @@ def render_check_tab(
                     "降水(mm)": "{:.1f}",
                     "風速(m/s)": "{:.1f}",
                 })
-                .applymap(wind_speed_style, subset=["風速(m/s)"])
+                .map(wind_speed_style, subset=["風速(m/s)"])
             )
 
             st.dataframe(
