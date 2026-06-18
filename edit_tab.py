@@ -98,7 +98,7 @@ def _fmt_num(v, unit: str, digits: int = 0) -> str:
     except Exception:
         return "—"
 
-def render_add_form(insert_row):
+def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_time=None, **kwargs):
     st.subheader("🆕 新規釣行ログ追加")
     
     # st.form を廃止し、通常のカラムでレイアウトを組む（Enterキー誤爆防止）
