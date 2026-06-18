@@ -128,7 +128,7 @@ def render_add_form(insert_row):
     img3 = st.file_uploader("画像3", type=["jpg", "png", "jpeg"], key="add_img3")
 
     # st.form_submit_button ではなく st.button を使うことでEnter送信を無効化
-    if st.button("💾 追加する", type="primary", use_container_width=True):
+    if st.button("💾 追加する", use_container_width=True):
         with st.spinner("保存中..."):
             
             # 画像のアップロード処理（画像がある場合のみCloudinaryへ）
