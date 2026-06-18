@@ -98,147 +98,69 @@ def _fmt_num(v, unit: str, digits: int = 0) -> str:
     except Exception:
         return "—"
 
-def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_time=None):
-    st.subheader("➕ 新規追加")
+def render_add_form(insert_row):
+    st.subheader("🆕 新規釣行ログ追加")
+    
+    # st.form を廃止し、通常のカラムでレイアウトを組む（Enterキー誤爆防止）
+    c1, c2 = st.columns(2)
+    with c1:
+        date_v = st.date_input("日付", value=datetime.now(), key="add_date")
+        time_v = st.time_input("時間", value=datetime.now().time(), key="add_time")
+        area_v = st.text_input("エリア", key="add_area")
+        tide_type_v = st.selectbox("潮回り", ["大潮", "中潮", "小潮", "若潮", "長潮", "不明"], key="add_tide")
+        tide_h_v = st.number_input("潮位(cm)", value=0.0, step=1.0, key="add_tide_h")
+    
+    with c2:
+        temp_v = st.number_input("気温(℃)", value=0.0, step=0.1, format="%.1f", key="add_temp")
+        wind_v = st.text_input("風向", key="add_wind")
+        lure_v = st.text_input("ルアー", key="add_lure")
+        action_v = st.text_input("アクション", key="add_action")
+        size_v = st.number_input("サイズ(cm) ※ボウズは0", min_value=0, value=0, step=1, key="add_size")
 
-    if insert_row is None:
-        st.warning("追加関数が見つからないため、新規追加フォームを表示できません。")
-        return
+    st.markdown("#### 🐟 ベイトパターン")
+    bait_options = ["ハク", "バチ", "イナッコ", "アミ", "サッパ", "その他/不明"]
+    # スマホでもタップしやすい st.pills を採用
+    bait_v = st.pills("メインベイト", bait_options, default="その他/不明", key="add_bait")
 
-    from db_utils_gsheets import upload_image_to_cloudinary
+    st.markdown("#### 📷 画像アップロード")
+    img1 = st.file_uploader("画像1", type=["jpg", "png", "jpeg"], key="add_img1")
+    img2 = st.file_uploader("画像2", type=["jpg", "png", "jpeg"], key="add_img2")
+    img3 = st.file_uploader("画像3", type=["jpg", "png", "jpeg"], key="add_img3")
 
-    if "add_image_uploader_nonce" not in st.session_state:
-        st.session_state["add_image_uploader_nonce"] = 0
+    # st.form_submit_button ではなく st.button を使うことでEnter送信を無効化
+    if st.button("💾 追加する", type="primary", use_container_width=True):
+        with st.spinner("保存中..."):
+            
+            # 画像のアップロード処理（画像がある場合のみCloudinaryへ）
+            try:
+                from db_utils_gsheets import upload_image_to_cloudinary
+                url1 = upload_image_to_cloudinary(img1, img1.name) if img1 else ""
+                url2 = upload_image_to_cloudinary(img2, img2.name) if img2 else ""
+                url3 = upload_image_to_cloudinary(img3, img3.name) if img3 else ""
+            except ImportError:
+                url1, url2, url3 = "", "", ""
+                st.warning("画像アップロード関数が見つかりませんでした。")
 
-    uploader_nonce = st.session_state["add_image_uploader_nonce"]
-    port_names = list((TIDE736_PORTS or {}).keys())
-
-    with st.form("add_log_form"):
-        c1, c2 = st.columns(2)
-        with c1:
-            date_v = st.date_input("日付", value=datetime.now().date(), key="add_date")
-            area_v = st.text_input("エリア", key="add_area")
-            tide_v = st.selectbox("潮回り", ["大潮", "中潮", "小潮", "若潮", "長潮"], index=1, key="add_tide")
-            time_v = st.time_input(
-                "時間",
-                value=datetime.now().replace(second=0, microsecond=0).time(),
-                key="add_time"
+            # スプレッドシートへの保存処理
+            insert_row(
+                date=date_v.strftime("%Y-%m-%d"),
+                time=time_v.strftime("%H:%M"),
+                area=area_v,
+                tide_type=tide_type_v,
+                tide_height=float(tide_h_v),
+                temperature=float(temp_v),
+                wind_direction=wind_v,
+                lure=lure_v,
+                action=action_v,
+                size=float(size_v),
+                image_url1=url1,
+                image_url2=url2,
+                image_url3=url3,
+                bait_pattern=bait_v  # 追加したベイトパターンを渡す
             )
-        with c2:
-            temp_v = st.number_input("気温(℃)", value=0.0, step=0.1, format="%.1f", key="add_temp")
-            wind_v = st.text_input("風向", key="add_wind")
-            lure_v = st.text_input("ルアー", key="add_lure")
-            action_v = st.text_input("アクション", key="add_action")
-            size_v = st.number_input("サイズ(cm) ※ボウズは0", min_value=0, value=0, step=1, key="add_size")
-
-        st.markdown("#### 🐟 ベイトパターン")
-        bait_options = ["ハク", "川バチ", "クルクルバチ", "引き波バチ", "イナッコ", "アミ", "サッパ", "イワシ", "コノシロ", "ハゼ", "エビ", "その他/不明"]
-        bait_v = st.pills("メインベイト", bait_options, default="その他/不明", key="add_bait")
-
-        st.markdown("#### 🌊 潮位")
-        tide_height_manual = st.number_input(
-            "潮位(cm) 手入力",
-            min_value=0.0,
-            value=0.0,
-            step=1.0,
-            key="add_tide_height_manual",
-            help="自動取得しない場合は手入力してください。0のままでも登録できます。",
-        )
-        auto_tide = st.checkbox(
-            "港と時刻から潮位を自動取得する",
-            value=bool(port_names),
-            disabled=not bool(port_names),
-            key="add_auto_tide",
-        )
-
-        port_name = None
-        if auto_tide and port_names:
-            port_name = st.selectbox("潮位の基準港", options=port_names, index=0, key="add_tide_port")
-
-        st.markdown("#### 📸 画像（任意）")
-        ic1, ic2, ic3 = st.columns(3)
-
-        with ic1:
-            image_file1 = st.file_uploader(
-                "画像1",
-                type=["jpg", "jpeg", "png"],
-                key=f"add_image1_{uploader_nonce}"
-            )
-        with ic2:
-            image_file2 = st.file_uploader(
-                "画像2",
-                type=["jpg", "jpeg", "png"],
-                key=f"add_image2_{uploader_nonce}"
-            )
-        with ic3:
-            image_file3 = st.file_uploader(
-                "画像3",
-                type=["jpg", "jpeg", "png"],
-                key=f"add_image3_{uploader_nonce}"
-            )
-
-        submitted = st.form_submit_button("追加する", type="primary")
-
-    if not submitted:
-        return
-
-    area_clean = str(area_v).strip()
-    if not area_clean:
-        st.warning("エリアは必須です。")
-        return
-
-    time_str = time_v.strftime("%H:%M") if time_v else "00:00"
-
-    tide_height_value = None
-    if auto_tide and port_name and TIDE736_PORTS and get_tide_height_for_time is not None:
-        try:
-            port = TIDE736_PORTS[port_name]
-            tide_height_value, matched_time = get_tide_height_for_time(
-                pc=port["pc"],
-                hc=port["hc"],
-                target_date=date_v,
-                t=time_v,
-            )
-            st.info(f"{port_name} の {matched_time} データから潮位 {float(tide_height_value):.0f}cm を採用しました。")
-        except Exception as e:
-            st.warning(f"潮位の自動取得に失敗したため、手入力値を使います: {e}")
-
-    if tide_height_value is None:
-        tide_height_value = float(tide_height_manual) if float(tide_height_manual) > 0 else None
-
-    uploaded_urls = []
-    for idx, image_file in enumerate([image_file1, image_file2, image_file3], start=1):
-        if image_file is None:
-            uploaded_urls.append(None)
-            continue
-        filename = f"new_{date_v.strftime('%Y%m%d')}_{idx}_{image_file.name}"
-        uploaded_urls.append(upload_image_to_cloudinary(image_file, filename))
-
-    try:
-        insert_row(
-            date=date_v.strftime("%Y-%m-%d"),
-            time=time_str,
-            area=area_clean,
-            tide_type=tide_v,
-            tide_height=tide_height_value,
-            temperature=float(temp_v) if temp_v is not None else None,
-            wind_direction=str(wind_v).strip() or None,
-            lure=str(lure_v).strip() or None,
-            action=str(action_v).strip() or None,
-            size=float(size_v) if size_v is not None else None,
-            image_url1=uploaded_urls[0],
-            image_url2=uploaded_urls[1],
-            image_url3=uploaded_urls[2],
-            bait_pattern=bait_v,
-        )
-        st.success("新規追加しました")
-
-        # file_uploader 対策
-        st.session_state["add_image_uploader_nonce"] = st.session_state.get("add_image_uploader_nonce", 0) + 1
-
-        st.rerun()
-    except Exception as e:
-        st.error(f"追加に失敗しました: {e}")
+            
+            st.success("釣行ログを保存しました！")
+            st.rerun()  # 画面を更新してフォームをリセット
 
 def render_edit_tab(*, TIDE736_PORTS=None, fetch_all=None, insert_row=None, get_tide_height_for_time=None, **_ignore):
     """
