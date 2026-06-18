@@ -204,29 +204,58 @@ def _lure_block(df):
         use_container_width=True
     )
 
-def _bait_pattern_block(df):
-    st.subheader("🐟 ベイトパターン別の釣果傾向")
+def _bait_lure_cross_block(df):
+    st.subheader("🐟 ベイト × ルアーの最強コンボ")
+
     if df.empty:
         st.info("データがありません。")
         return
 
-    # 釣れたデータのみを抽出
-    df_catch = df[df["size"] > 0]
+    # ボウズ（サイズ0や未入力）は除外
+    df_catch = df[df["size"] > 0].copy()
+
     if df_catch.empty:
         st.info("まだ釣果データがありません。")
         return
 
-    # ベイトパターンごとのキャッチ数を集計
-    g = df_catch.groupby("bait_pattern").size().reset_index(name="catches")
-    g = g.sort_values("catches", ascending=False)
+    # 空白データの処理
+    df_catch["bait_pattern"] = df_catch["bait_pattern"].fillna("その他/不明")
+    df_catch["lure"] = df_catch["lure"].fillna("未入力").replace("", "未入力")
 
+    # ① グラフ用データ：ベイト × ルアー で集計
+    g = df_catch.groupby(["bait_pattern", "lure"]).size().reset_index(name="catches")
+
+    # 積み上げ棒グラフの作成
     fig = px.bar(
-        g, x="bait_pattern", y="catches", text="catches",
-        labels={"bait_pattern": "ベイトパターン", "catches": "釣果数"},
-        title="ベイトパターン別 釣果数"
+        g,
+        x="bait_pattern",
+        y="catches",
+        color="lure",
+        title="ベイト別のヒットルアー内訳",
+        labels={"bait_pattern": "ベイトパターン", "catches": "釣果数", "lure": "ヒットルアー"},
+        text="catches"
     )
-    fig.update_traces(texttemplate="%{text}", textposition="outside")
+
+    # グラフの見た目調整（数字をバーの中央に表示）
+    fig.update_traces(textposition='inside')
+    fig.update_layout(barmode='stack', margin=dict(t=80, b=40, l=40, r=40))
     render_tap_only(fig)
+
+    # ② クロス集計表（表形式でパッと見たい時用）
+    st.markdown("**📈 ルアー × ベイト クロス集計表**")
+    pivot_df = df_catch.pivot_table(
+        index="lure", 
+        columns="bait_pattern", 
+        values="id", 
+        aggfunc="count", 
+        fill_value=0
+    )
+    
+    # 見やすいように釣果が多いルアー順にソート
+    pivot_df["総計"] = pivot_df.sum(axis=1)
+    pivot_df = pivot_df.sort_values("総計", ascending=False).drop(columns=["総計"])
+    
+    st.dataframe(pivot_df, use_container_width=True)
 
 def _area_tide_block(df):
     st.subheader("📍 エリア別の潮位分布")
@@ -392,6 +421,6 @@ def show_analysis():
     st.divider()
     _month_block(df)
     _lure_block(df)
-    _bait_pattern_block(df)
+    _bait_lure_cross_block(df)
     _area_tide_block(df)
     _tide_time_heatmap(df)
