@@ -21,7 +21,7 @@ def _init_cloudinary():
 
 # 列定義（ヘッダ順を固定）
 COLUMNS = ["id","date","time","area","tide_type","tide_height","temperature",
-           "wind_direction","lure","action","size","image_url1","image_url2","image_url3",]
+           "wind_direction","lure","action","size","image_url1","image_url2","image_url3","bait_pattern"]
 SHEET_NAME = "logs"  # シート名は好きに
 
 @st.cache_resource(show_spinner=False)
@@ -97,6 +97,7 @@ def insert_row(date: str,
                 image_url1: Optional[str] = None,
                 image_url2: Optional[str] = None,
                 image_url3: Optional[str] = None,
+                bait_pattern: Optional[str] = None,
                ) -> None:
     ws = _ws()
     df = fetch_all()
@@ -116,6 +117,7 @@ def insert_row(date: str,
         image_url1 or "",
         image_url2 or "",
         image_url3 or "",
+        bait_pattern or "その他/不明",
     ]
     ws.append_row(row, value_input_option="USER_ENTERED")
 
@@ -132,6 +134,7 @@ def update_row(row_id: int,
                 image_url1: Optional[str] = None,
                 image_url2: Optional[str] = None,
                 image_url3: Optional[str] = None,
+                bait_pattern: Optional[str] = None,
                ) -> None:
     ws = _ws()
     ids = ws.col_values(1)
@@ -174,6 +177,7 @@ def update_row(row_id: int,
         final_image_url1,
         final_image_url2,
         final_image_url3,
+        bait_pattern or "その他/不明",
     ]
     ws.update(f"A{r}:N{r}", [values], value_input_option="USER_ENTERED")
 

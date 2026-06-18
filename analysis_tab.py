@@ -41,6 +41,7 @@ def _prep_df():
     # 欠損の扱いを軽く整理
     df["tide_type"] = df["tide_type"].fillna("不明")
     df["area"] = df["area"].fillna("未入力")
+    df["bait_pattern"] = df["bait_pattern"].fillna("その他/不明") # 👈 追加
     return df
 
 def _summary_block(df):
@@ -202,6 +203,30 @@ def _lure_block(df):
         }),
         use_container_width=True
     )
+
+def _bait_pattern_block(df):
+    st.subheader("🐟 ベイトパターン別の釣果傾向")
+    if df.empty:
+        st.info("データがありません。")
+        return
+
+    # 釣れたデータのみを抽出
+    df_catch = df[df["size"] > 0]
+    if df_catch.empty:
+        st.info("まだ釣果データがありません。")
+        return
+
+    # ベイトパターンごとのキャッチ数を集計
+    g = df_catch.groupby("bait_pattern").size().reset_index(name="catches")
+    g = g.sort_values("catches", ascending=False)
+
+    fig = px.bar(
+        g, x="bait_pattern", y="catches", text="catches",
+        labels={"bait_pattern": "ベイトパターン", "catches": "釣果数"},
+        title="ベイトパターン別 釣果数"
+    )
+    fig.update_traces(texttemplate="%{text}", textposition="outside")
+    render_tap_only(fig)
 
 def _area_tide_block(df):
     st.subheader("📍 エリア別の潮位分布")
@@ -367,5 +392,6 @@ def show_analysis():
     st.divider()
     _month_block(df)
     _lure_block(df)
+    _bait_pattern_block
     _area_tide_block(df)
     _tide_time_heatmap(df)

@@ -130,6 +130,10 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
             action_v = st.text_input("アクション", key="add_action")
             size_v = st.number_input("サイズ(cm) ※ボウズは0", min_value=0, value=0, step=1, key="add_size")
 
+        st.markdown("#### 🐟 ベイトパターン")
+        bait_options = ["ハク", "川バチ", "クルクルバチ", "引き波バチ", "イナッコ", "アミ", "サッパ", "イワシ", "コノシロ", "ハゼ", "エビ", "その他/不明"]
+        bait_v = st.pills("メインベイト", bait_options, default="その他/不明", key="add_bait")
+
         st.markdown("#### 🌊 潮位")
         tide_height_manual = st.number_input(
             "潮位(cm) 手入力",
@@ -224,6 +228,7 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
             image_url1=uploaded_urls[0],
             image_url2=uploaded_urls[1],
             image_url3=uploaded_urls[2],
+            bait_pattern=bait_v,
         )
         st.success("新規追加しました")
 
@@ -340,6 +345,7 @@ def _open_details_dialog(row: pd.Series, *, is_mobile: bool = True):
                         step=1.0,
                     )
                     wind_e = st.text_input("風向", value=str(row.get("wind_direction", "") or ""))
+                    bait_e = st.write(f"ベイト: {row.get('bait_pattern') or '-'}")
                     lure_e = st.text_input("ルアー", value=str(row.get("lure", "") or ""))
                     act_e = st.text_input("アクション", value=str(row.get("action", "") or ""))
                     size_e = st.number_input(
@@ -360,6 +366,7 @@ def _open_details_dialog(row: pd.Series, *, is_mobile: bool = True):
                             else 1,
                         )
                         time_e = st.time_input("時間", value=def_time, key=f"dialog_time_e_{int(row['id'])}")
+                        bait_e = st.write(f"ベイト: {row.get('bait_pattern') or '-'}")
                     with c2:
                         temp_e = st.number_input(
                             "気温(℃)",
@@ -481,6 +488,7 @@ def _open_details_dialog(row: pd.Series, *, is_mobile: bool = True):
                         size=int(size_e),
                         tide_height=float(tide_h_e),
                         time=time_str,
+                        bait_pattern=str(bait_e),
                     )
                     if image_url1_arg is not None:
                         kwargs["image_url1"] = image_url1_arg
