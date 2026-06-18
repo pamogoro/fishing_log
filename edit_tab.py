@@ -77,6 +77,7 @@ def _render_one_blog_card(row: pd.Series, show_images: bool = True):
             st.write(f"🌡 気温：{_fmt_num(row.get('temperature'), '℃', digits=1)}")
         with c2:
             st.write(f"🧭 風向：{row.get('wind_direction') or '—'}")
+            st.write(f"🐟 ベイト：{row.get('bait_pattern') or '—'}")
             st.write(f"🪝 ルアー：{row.get('lure') or '—'}")
             st.write(f"🎮 アクション：{row.get('action') or '—'}")
 

@@ -392,6 +392,6 @@ def show_analysis():
     st.divider()
     _month_block(df)
     _lure_block(df)
-    _bait_pattern_block
+    _bait_pattern_block(df)
     _area_tide_block(df)
     _tide_time_heatmap(df)
