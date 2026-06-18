@@ -118,7 +118,19 @@ def render_add_form(*, TIDE736_PORTS=None, insert_row=None, get_tide_height_for_
         size_v = st.number_input("サイズ(cm) ※ボウズは0", min_value=0, value=0, step=1, key="add_size")
 
     st.markdown("#### 🐟 ベイトパターン")
-    bait_options = ["ハク", "バチ", "イナッコ", "アミ", "サッパ", "その他/不明"]
+    bait_options = ["ハク", 
+                    "川バチ", 
+                    "引き波バチ", 
+                    "クルクルバチ", 
+                    "イナッコ", 
+                    "アミ", 
+                    "サッパ", 
+                    "コノシロ", 
+                    "サヨリ", 
+                    "アユ", 
+                    "ハゼ", 
+                    "エビ・カニ", 
+                    "その他/不明"]
     # スマホでもタップしやすい st.pills を採用
     bait_v = st.pills("メインベイト", bait_options, default="その他/不明", key="add_bait")
 
